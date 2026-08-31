@@ -21,18 +21,20 @@ let
 
   composed = compose {
     entries = [
-      entries.caisson-nixpkgs
-      entries.caisson-nixos
-      entries.caisson-home-manager
-      entries.caisson-colmena
-      entries.caisson-terranix
-      entries.caisson-system-manager
+      entries.nixpkgs
+      entries.nixos
+      entries.home-manager
+      entries.colmena
+      entries.terranix
+      entries.system-manager
     ];
   };
 
   expectedCaissonNames = [
     "callConsumerFlake"
+    "colmena"
     "eval-weight"
+    "home-manager"
     "importApply"
     "mkFlake"
     "mkFlakeModule"
@@ -41,7 +43,11 @@ let
     "mkMemoizedDerivationRead"
     "mkModule"
     "modules"
+    "nixos"
+    "nixpkgs"
     "partitionExtraInputs"
+    "system-manager"
+    "terranix"
     "types"
   ];
 
@@ -127,18 +133,18 @@ let
       } == inputs.nixpkgs-lib;
 
     integrationNamespacesPresent =
-      builtins.all (ns: composed.lib ? ${ns}) [
-        "caisson-nixpkgs"
-        "caisson-nixos"
-        "caisson-home-manager"
-        "caisson-colmena"
-        "caisson-terranix"
-        "caisson-system-manager"
+      builtins.all (ns: composed.lib.caisson ? ${ns}) [
+        "nixpkgs"
+        "nixos"
+        "home-manager"
+        "colmena"
+        "terranix"
+        "system-manager"
       ];
 
     minimalNixosSystemEvaluates =
       let
-        system = composed.lib.caisson-nixos.mkSystemMinimal {
+        system = composed.lib.caisson.nixos.mkSystemMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
           configModule =
@@ -152,7 +158,7 @@ let
 
     sourceMetaProvenanceIsCompositional =
       let
-        meta = composed.lib.caisson-home-manager.mkSourceMeta {
+        meta = composed.lib.caisson.home-manager.mkSourceMeta {
           profileName = "compat";
           homeManagerOutPath = "/probe-hm";
           nixpkgsOutPath = "/probe-np";
@@ -167,13 +173,13 @@ let
         throws =
           expr: !(builtins.tryEval (builtins.deepSeq expr true)).success;
       in
-      throws (composed.lib.caisson-colmena.mkColmenaHive { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson-terranix.mkTerranixConfiguration { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson-system-manager.mkSystemConfig { ecosystemSrc = { }; });
+      throws (composed.lib.caisson.colmena.mkColmenaHive { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson.terranix.mkTerranixConfiguration { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson.system-manager.mkSystemConfig { ecosystemSrc = { }; });
 
     homeConfigurationEvaluatesEndToEnd =
       let
-        home = composed.lib.caisson-home-manager.mkHomeConfiguration {
+        home = composed.lib.caisson.home-manager.mkHomeConfiguration {
           ecosystemSrc = inputs.home-manager;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -194,7 +200,7 @@ let
 
     nixosAdapterUpstreamModeEvaluatesEndToEnd =
       let
-        system = composed.lib.caisson-nixos.mkSystem {
+        system = composed.lib.caisson.nixos.mkSystem {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -202,7 +208,7 @@ let
             {
               imports = [
                 minimalNixosBase
-                (composed.lib.caisson-home-manager.mkNixosAdapter {
+                (composed.lib.caisson.home-manager.mkNixosAdapter {
                   ecosystemSrc = inputs.home-manager;
                   hostName = "compat-probe";
                   users.probe.configModule =
@@ -232,7 +238,7 @@ let
 
     nixosAdapterUserServiceModeEvaluatesEndToEnd =
       let
-        system = composed.lib.caisson-nixos.mkSystem {
+        system = composed.lib.caisson.nixos.mkSystem {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -240,7 +246,7 @@ let
             {
               imports = [
                 minimalNixosBase
-                (composed.lib.caisson-home-manager.mkNixosAdapter {
+                (composed.lib.caisson.home-manager.mkNixosAdapter {
                   ecosystemSrc = inputs.home-manager;
                   activationMode = "user-service";
                   hostName = "compat-probe-homed";
@@ -262,7 +268,7 @@ let
 
     colmenaHiveEvaluatesEndToEnd =
       let
-        hive = composed.lib.caisson-colmena.mkColmenaHive {
+        hive = composed.lib.caisson.colmena.mkColmenaHive {
           ecosystemSrc = inputs.colmena;
           meta.nixpkgs = pkgs;
           probe-node =
@@ -277,7 +283,7 @@ let
 
     terranixConfigurationEvaluatesEndToEnd =
       let
-        terraform = composed.lib.caisson-terranix.mkTerranixConfiguration {
+        terraform = composed.lib.caisson.terranix.mkTerranixConfiguration {
           ecosystemSrc = inputs.terranix;
           system = "x86_64-linux";
           modules = [ { config.terraform.required_version = ">= 1.0"; } ];
@@ -287,7 +293,7 @@ let
 
     systemManagerConfigEvaluatesEndToEnd =
       let
-        config = composed.lib.caisson-system-manager.mkSystemConfig {
+        config = composed.lib.caisson.system-manager.mkSystemConfig {
           ecosystemSrc = inputs.system-manager;
           modules = [
             {
@@ -303,7 +309,7 @@ let
 
     nixpkgsHelpersWorkOnRealPkgs =
       let
-        cn = composed.lib.caisson-nixpkgs;
+        cn = composed.lib.caisson.nixpkgs;
         scoped = cn.mkScope pkgs (callPackage: { probe = callPackage ({ hello }: hello) { }; });
         withPackages = pkgs.extend (
           (cn.mkPackagesOverlay (callPackage: { probe = callPackage ({ hello }: hello) { }; }))

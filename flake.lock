@@ -6,11 +6,11 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1788145121,
-        "narHash": "sha256-GZA8FNPyKfGvvhSFBS6lMR087XXSIzNZvp/Q1tn2Qs8=",
+        "lastModified": 1788145993,
+        "narHash": "sha256-YUH7ZRM+8W9ncsh/uGWOIiuuJUCQaDQHYymdsu3w3N8=",
         "ref": "refs/heads/main",
-        "rev": "f1fab97635ede8c572c4a2391ee8fe824254cb45",
-        "revCount": 11,
+        "rev": "9508d7eefe1d7d22c24223df57a486419f011f9f",
+        "revCount": 12,
         "type": "git",
         "url": "ssh://git@github.com/nix-caisson/caisson"
       },

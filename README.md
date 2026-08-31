@@ -36,8 +36,8 @@ The suite composes caisson's library and its six integrations through
 the caisson-core composition calculus against the pinned world, and
 exercises the calculus's guarantees (dedup, replacement, polyfills,
 the keyless tail) over the real entries plus integration behavior:
-a minimal NixOS system evaluated through `caisson-nixos` against the
-pinned nixpkgs, `caisson-home-manager` source-metadata provenance,
+a minimal NixOS system evaluated through `caisson.nixos` against the
+pinned nixpkgs, `caisson.home-manager` source-metadata provenance,
 and the integrations' ecosystemSrc validation.
 
 ## CI and the private phase
