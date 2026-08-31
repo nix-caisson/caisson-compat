@@ -1,15 +1,49 @@
 name: check
-# Runs on manual dispatch while the caisson repositories are private:
-# the sibling inputs are fetched over SSH, which the default workflow
-# token cannot do.  Switch the triggers to push/pull_request (and the
-# flake inputs to github: references) at publication.
+# The sibling caisson repositories are private, so every job needs the
+# CAISSON_CI_SSH_KEY secret (an SSH key with read access to the
+# nix-caisson repositories) to fetch them; without it the jobs skip
+# with a notice. At publication the secret becomes unnecessary and the
+# gate steps can go.
 on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   tests:
     runs-on: ubuntu-latest
+    env:
+      HAVE_KEY: ${{ secrets.CAISSON_CI_SSH_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v16
-      - run: nix flake check -L
-      - run: nix eval '.#lib.caisson-compat.tests.summary'
+      - if: env.HAVE_KEY == 'false'
+        run: echo "CAISSON_CI_SSH_KEY is not set; sibling repos are private; skipping (see README)"
+      - if: env.HAVE_KEY == 'true'
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.CAISSON_CI_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - if: env.HAVE_KEY == 'true'
+        uses: DeterminateSystems/nix-installer-action@v16
+      - if: env.HAVE_KEY == 'true'
+        run: nix flake check -L
+      - if: env.HAVE_KEY == 'true'
+        run: nix eval '.#lib.caisson-compat.tests.summary'
+      # The scheduled run is the family's drift detector: advance every
+      # pin, rerun the suite, and land the advance when green.
+      - if: env.HAVE_KEY == 'true' && github.event_name == 'schedule'
+        run: |
+          nix flake update
+          nix eval '.#lib.caisson-compat.tests.summary'
+          if ! git diff --quiet flake.lock; then
+            git config user.name "caisson-compat cron"
+            git config user.email "noreply@github.com"
+            git add flake.lock
+            git commit -m "maint: advance pins (scheduled drift detection)"
+            git push
+          fi

@@ -40,11 +40,21 @@ a minimal NixOS system evaluated through `caisson-nixos` against the
 pinned nixpkgs, `caisson-home-manager` source-metadata provenance,
 and the integrations' ecosystemSrc validation.
 
-While the caisson repositories are private, the sibling inputs use SSH
-URLs and cross-repository fetches need credentials that GitHub's
-default workflow token does not have, so the suite runs locally and
-push-triggered CI is enabled at publication (the workflow currently
-runs on manual dispatch).
+## CI and the private phase
+
+The workflow runs on push, pull request, a weekly schedule, and
+manual dispatch. The scheduled run is the family's drift detector: it
+advances every pin, reruns the suite, and lands the advance when
+green. While the caisson repositories are private, every job needs
+the `CAISSON_CI_SSH_KEY` repository secret, an SSH private key whose
+account can read the nix-caisson repositories; without it the jobs
+skip with a notice. Creating and rotating that key is an owner
+action (add the public half as an account SSH key or fine-grained
+deploy credential; delete it to revoke). At publication the secret
+becomes unnecessary and the gate steps can go. The same secret gates
+the non-blocking `compat-suite` jobs in caisson and caisson-core,
+which fetch this repository at HEAD and run the suite with the local
+working tree overriding the corresponding pin.
 
 ## License
 

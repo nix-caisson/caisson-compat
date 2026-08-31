@@ -45,6 +45,19 @@ let
     "types"
   ];
 
+  pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
+
+  minimalNixosBase =
+    { ... }:
+    {
+      boot.loader.grub.enable = false;
+      fileSystems."/" = {
+        device = "none";
+        fsType = "tmpfs";
+      };
+      system.stateVersion = "25.05";
+    };
+
   results = {
 
     composesTheCaissonLibrary =
@@ -157,6 +170,152 @@ let
       throws (composed.lib.caisson-colmena.mkColmenaHive { ecosystemSrc = { }; })
       && throws (composed.lib.caisson-terranix.mkTerranixConfiguration { ecosystemSrc = { }; })
       && throws (composed.lib.caisson-system-manager.mkSystemConfig { ecosystemSrc = { }; });
+
+    homeConfigurationEvaluatesEndToEnd =
+      let
+        home = composed.lib.caisson-home-manager.mkHomeConfiguration {
+          ecosystemSrc = inputs.home-manager;
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { ... }:
+            {
+              home.username = "probe";
+              home.homeDirectory = "/home/probe";
+              home.stateVersion = "25.05";
+            };
+        };
+        meta = home.config.caisson-home-manager.sourceMeta;
+      in
+      builtins.isString home.activationPackage.drvPath
+      && home.config.home.username == "probe"
+      && meta.schemaVersion == 3
+      && meta.homeManagerOutPath == builtins.toString inputs.home-manager
+      && meta.nixpkgsOutPath == builtins.toString pkgs.path;
+
+    nixosAdapterUpstreamModeEvaluatesEndToEnd =
+      let
+        system = composed.lib.caisson-nixos.mkSystem {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { ... }:
+            {
+              imports = [
+                minimalNixosBase
+                (composed.lib.caisson-home-manager.mkNixosAdapter {
+                  ecosystemSrc = inputs.home-manager;
+                  hostName = "compat-probe";
+                  users.probe.configModule =
+                    { ... }:
+                    {
+                      home.stateVersion = "25.05";
+                    };
+                })
+              ];
+              users.users.probe = {
+                isNormalUser = true;
+                home = "/home/probe";
+              };
+            };
+        };
+        # fromJSON refuses context-carrying strings; the marker file
+        # embeds store paths as ordinary references, which is correct.
+        marker = builtins.fromJSON (
+          builtins.unsafeDiscardStringContext
+            system.config.environment.etc."caisson-home-manager/source.json".text
+        );
+      in
+      builtins.isString system.config.system.build.toplevel.drvPath
+      && system.config.home-manager.users.probe.home.stateVersion == "25.05"
+      && marker.hostName == "compat-probe"
+      && marker.schemaVersion == 3;
+
+    nixosAdapterUserServiceModeEvaluatesEndToEnd =
+      let
+        system = composed.lib.caisson-nixos.mkSystem {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { ... }:
+            {
+              imports = [
+                minimalNixosBase
+                (composed.lib.caisson-home-manager.mkNixosAdapter {
+                  ecosystemSrc = inputs.home-manager;
+                  activationMode = "user-service";
+                  hostName = "compat-probe-homed";
+                  users.probe.configModule =
+                    { ... }:
+                    {
+                      home.username = "probe";
+                      home.homeDirectory = "/home/probe";
+                      home.stateVersion = "25.05";
+                    };
+                })
+              ];
+            };
+        };
+      in
+      builtins.isString system.config.caisson-home-manager.hostedActivations.probe.drvPath
+      && system.config.systemd.user.services.home-manager.unitConfig.ConditionUser == "probe"
+      && builtins.isString system.config.system.build.toplevel.drvPath;
+
+    colmenaHiveEvaluatesEndToEnd =
+      let
+        hive = composed.lib.caisson-colmena.mkColmenaHive {
+          ecosystemSrc = inputs.colmena;
+          meta.nixpkgs = pkgs;
+          probe-node =
+            { ... }:
+            {
+              imports = [ minimalNixosBase ];
+              deployment.targetHost = "probe";
+            };
+        };
+      in
+      builtins.isString hive.nodes.probe-node.config.system.build.toplevel.drvPath;
+
+    terranixConfigurationEvaluatesEndToEnd =
+      let
+        terraform = composed.lib.caisson-terranix.mkTerranixConfiguration {
+          ecosystemSrc = inputs.terranix;
+          system = "x86_64-linux";
+          modules = [ { config.terraform.required_version = ">= 1.0"; } ];
+        };
+      in
+      builtins.isString terraform.drvPath;
+
+    systemManagerConfigEvaluatesEndToEnd =
+      let
+        config = composed.lib.caisson-system-manager.mkSystemConfig {
+          ecosystemSrc = inputs.system-manager;
+          modules = [
+            {
+              config = {
+                nixpkgs.hostPlatform = "x86_64-linux";
+                system-manager.allowAnyDistro = true;
+              };
+            }
+          ];
+        };
+      in
+      builtins.isString config.drvPath || builtins.isString (config.build.toplevel.drvPath or null);
+
+    nixpkgsHelpersWorkOnRealPkgs =
+      let
+        cn = composed.lib.caisson-nixpkgs;
+        scoped = cn.mkScope pkgs (callPackage: { probe = callPackage ({ hello }: hello) { }; });
+        withPackages = pkgs.extend (
+          (cn.mkPackagesOverlay (callPackage: { probe = callPackage ({ hello }: hello) { }; }))
+            "compatScope"
+        );
+        withPolyfill = pkgs.extend (
+          (cn.mkPolyfillOverlay (final: prev: { compatPolyfillProbe = prev.hello; })) "unused"
+        );
+      in
+      scoped.probe.pname == "hello"
+      && withPackages.compatScope.probe.pname == "hello"
+      && withPolyfill.compatPolyfillProbe.pname == "hello";
 
   };
 
