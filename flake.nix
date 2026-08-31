@@ -11,6 +11,7 @@
     caisson.url = "git+ssh://git@github.com/nix-caisson/caisson";
 
     nixpkgs-lib.url = "github:nix-community/nixpkgs.lib";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   };
 

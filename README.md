@@ -32,10 +32,13 @@ evaluation-shape change that caisson must absorb.
 ./run-tests.sh
 ```
 
-The suite composes caisson's library through the caisson-core
-composition calculus against the pinned nixpkgs lib and exercises the
-calculus's guarantees (dedup, replacement, polyfills, the keyless
-tail) over the real entries.
+The suite composes caisson's library and its six integrations through
+the caisson-core composition calculus against the pinned world, and
+exercises the calculus's guarantees (dedup, replacement, polyfills,
+the keyless tail) over the real entries plus integration behavior:
+a minimal NixOS system evaluated through `caisson-nixos` against the
+pinned nixpkgs, `caisson-home-manager` source-metadata provenance,
+and the integrations' ecosystemSrc validation.
 
 While the caisson repositories are private, the sibling inputs use SSH
 URLs and cross-repository fetches need credentials that GitHub's

@@ -19,7 +19,16 @@ let
     ecosystemSrc = "${inputs.nixpkgs-lib}/lib";
   };
 
-  composed = compose { entries = [ entries.caisson-lib ]; };
+  composed = compose {
+    entries = [
+      entries.caisson-nixpkgs
+      entries.caisson-nixos
+      entries.caisson-home-manager
+      entries.caisson-colmena
+      entries.caisson-terranix
+      entries.caisson-system-manager
+    ];
+  };
 
   expectedCaissonNames = [
     "callConsumerFlake"
@@ -43,6 +52,12 @@ let
       && composed.meta.order == [
         "caisson.nixpkgs-lib"
         "caisson.lib"
+        "caisson.nixpkgs"
+        "caisson.nixos"
+        "caisson.home-manager"
+        "caisson.colmena"
+        "caisson.terranix"
+        "caisson.system-manager"
       ];
 
     baseLibraryBehaves =
@@ -97,6 +112,51 @@ let
         name = "nixpkgs-lib";
         inputs = { inherit (inputs) nixpkgs-lib; };
       } == inputs.nixpkgs-lib;
+
+    integrationNamespacesPresent =
+      builtins.all (ns: composed.lib ? ${ns}) [
+        "caisson-nixpkgs"
+        "caisson-nixos"
+        "caisson-home-manager"
+        "caisson-colmena"
+        "caisson-terranix"
+        "caisson-system-manager"
+      ];
+
+    minimalNixosSystemEvaluates =
+      let
+        system = composed.lib.caisson-nixos.mkSystemMinimal {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
+          configModule =
+            { lib, ... }:
+            {
+              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+            };
+        };
+      in
+      system.config.nixpkgs.pkgs ? hello;
+
+    sourceMetaProvenanceIsCompositional =
+      let
+        meta = composed.lib.caisson-home-manager.mkSourceMeta {
+          profileName = "compat";
+          homeManagerOutPath = "/probe-hm";
+          nixpkgsOutPath = "/probe-np";
+        };
+      in
+      meta.schemaVersion == 3
+      && meta.homeManagerOutPath == "/probe-hm"
+      && meta ? fingerprint;
+
+    ecosystemSrcValidationThrows =
+      let
+        throws =
+          expr: !(builtins.tryEval (builtins.deepSeq expr true)).success;
+      in
+      throws (composed.lib.caisson-colmena.mkColmenaHive { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson-terranix.mkTerranixConfiguration { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson-system-manager.mkSystemConfig { ecosystemSrc = { }; });
 
   };
 
