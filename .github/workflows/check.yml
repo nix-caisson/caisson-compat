@@ -1,0 +1,15 @@
+name: check
+# Runs on manual dispatch while the caisson repositories are private:
+# the sibling inputs are fetched over SSH, which the default workflow
+# token cannot do.  Switch the triggers to push/pull_request (and the
+# flake inputs to github: references) at publication.
+on:
+  workflow_dispatch:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - run: nix flake check -L
+      - run: nix eval '.#lib.caisson-compat.tests.summary'
