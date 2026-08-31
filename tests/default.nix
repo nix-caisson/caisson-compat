@@ -21,6 +21,8 @@ let
 
   composed = compose {
     entries = [
+      entries.flake-parts
+      entries.tooling
       entries.nixpkgs
       entries.nixos
       entries.home-manager
@@ -30,25 +32,32 @@ let
     ];
   };
 
+  # The seven integrations plus the pkgs-dependent tooling live under
+  # `caisson`; the machinery lives under `caisson-core`.
   expectedCaissonNames = [
-    "callConsumerFlake"
     "colmena"
     "eval-weight"
     "home-manager"
-    "importApply"
     "mkFlake"
     "mkFlakeModule"
-    "mkLib"
-    "mkLibOverlay"
     "mkMemoizedDerivationRead"
-    "mkModule"
-    "modules"
     "nixos"
     "nixpkgs"
-    "partitionExtraInputs"
     "system-manager"
     "terranix"
     "types"
+  ];
+
+  expectedCoreNames = [
+    "callConsumerFlake"
+    "compose"
+    "importApply"
+    "mkLib"
+    "mkLibOverlay"
+    "mkModule"
+    "modules"
+    "partitionExtraInputs"
+    "resolve"
   ];
 
   pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
@@ -68,19 +77,26 @@ let
 
     composesTheCaissonLibrary =
       builtins.attrNames composed.lib.caisson == expectedCaissonNames
-      && composed.meta.order == [
-        "caisson.nixpkgs-lib"
-        "caisson.lib"
-        "caisson.nixpkgs"
-        "caisson.nixos"
-        "caisson.home-manager"
-        "caisson.colmena"
-        "caisson.terranix"
-        "caisson.system-manager"
-      ];
+      && builtins.attrNames composed.lib.caisson-core == expectedCoreNames
+      &&
+        composed.meta.order == [
+          "caisson.nixpkgs-lib"
+          "caisson.lib"
+          "caisson.flake-parts"
+          "caisson.tooling"
+          "caisson.nixpkgs"
+          "caisson.nixos"
+          "caisson.home-manager"
+          "caisson.colmena"
+          "caisson.terranix"
+          "caisson.system-manager"
+        ];
 
     baseLibraryBehaves =
-      composed.lib.concatStringsSep "," [ "a" "b" ] == "a,b"
+      composed.lib.concatStringsSep "," [
+        "a"
+        "b"
+      ] == "a,b"
       && composed.lib ? evalModules
       && composed.lib ? mkOption;
 
@@ -95,9 +111,18 @@ let
             compatProbe = prev.compatProbe or (x: "probe-${prev.concatStringsSep "-" x}");
           };
         };
-        r = compose { entries = [ entries.caisson-lib polyfill ]; };
+        r = compose {
+          entries = [
+            entries.caisson-lib
+            polyfill
+          ];
+        };
       in
-      r.lib.compatProbe [ "a" "b" ] == "probe-a-b" && r.lib ? caisson;
+      r.lib.compatProbe [
+        "a"
+        "b"
+      ] == "probe-a-b"
+      && r.lib ? caisson-core;
 
     baseReplacementLastWins =
       let
@@ -106,23 +131,34 @@ let
           imports = [ ];
           overlay = _final: _prev: { stubMarker = true; };
         };
-        r = compose { entries = [ entries.caisson-lib stub ]; };
+        r = compose {
+          entries = [
+            entries.caisson-lib
+            stub
+          ];
+        };
       in
       r.lib.stubMarker or false
       && !(r.lib ? evalModules)
-      && r.meta.order == [
-        "caisson.nixpkgs-lib"
-        "caisson.lib"
-      ];
+      &&
+        r.meta.order == [
+          "caisson.nixpkgs-lib"
+          "caisson.lib"
+        ];
 
     keylessPatchSeesComposedWorld =
       let
         anon = {
           key = null;
           imports = [ ];
-          overlay = _final: prev: { sawCaisson = prev.caisson ? mkLib; };
+          overlay = _final: prev: { sawCaisson = prev.caisson-core ? mkLib; };
         };
-        r = compose { entries = [ anon entries.caisson-lib ]; };
+        r = compose {
+          entries = [
+            anon
+            entries.caisson-lib
+          ];
+        };
       in
       r.lib.sawCaisson;
 
@@ -132,15 +168,14 @@ let
         inputs = { inherit (inputs) nixpkgs-lib; };
       } == inputs.nixpkgs-lib;
 
-    integrationNamespacesPresent =
-      builtins.all (ns: composed.lib.caisson ? ${ns}) [
-        "nixpkgs"
-        "nixos"
-        "home-manager"
-        "colmena"
-        "terranix"
-        "system-manager"
-      ];
+    integrationNamespacesPresent = builtins.all (ns: composed.lib.caisson ? ${ns}) [
+      "nixpkgs"
+      "nixos"
+      "home-manager"
+      "colmena"
+      "terranix"
+      "system-manager"
+    ];
 
     minimalNixosSystemEvaluates =
       let
@@ -164,14 +199,11 @@ let
           nixpkgsOutPath = "/probe-np";
         };
       in
-      meta.schemaVersion == 3
-      && meta.homeManagerOutPath == "/probe-hm"
-      && meta ? fingerprint;
+      meta.schemaVersion == 3 && meta.homeManagerOutPath == "/probe-hm" && meta ? fingerprint;
 
     ecosystemSrcValidationThrows =
       let
-        throws =
-          expr: !(builtins.tryEval (builtins.deepSeq expr true)).success;
+        throws = expr: !(builtins.tryEval (builtins.deepSeq expr true)).success;
       in
       throws (composed.lib.caisson.colmena.mkColmenaHive { ecosystemSrc = { }; })
       && throws (composed.lib.caisson.terranix.mkTerranixConfiguration { ecosystemSrc = { }; })
@@ -309,11 +341,11 @@ let
 
     overlayBorneModulesReachAdapters =
       let
-        contributingLib = inputs.caisson.lib.mkLib {
+        contributingLib = inputs.caisson.lib.caisson-core.mkLib {
           inputs = { };
           libOverlays = _mkLibOverlay: {
             nixos = inputs.caisson.libOverlays.nixos;
-            contrib = inputs.caisson.lib.mkLibOverlay (
+            contrib = inputs.caisson.lib.caisson-core.mkLibOverlay (
               {
                 mkModule,
                 contributeModules,
@@ -351,12 +383,34 @@ let
       in
       system.config.compatProbe;
 
+    manifestTravelsWithMkLibCompositions =
+      let
+        composedWithMkLib = inputs.caisson.lib.caisson-core.mkLib {
+          inputs = { };
+          libOverlays = _mkLibOverlay: {
+            flake-parts = inputs.caisson.libOverlays.flake-parts;
+          };
+        };
+        manifest = composedWithMkLib.caisson-core.manifest;
+      in
+      builtins.attrNames manifest == [
+        "inputs"
+        "libOverlays"
+        "modules"
+      ]
+      && builtins.attrNames manifest.libOverlays == [ "flake-parts" ]
+      && composedWithMkLib.caisson ? mkFlake;
+
     nixpkgsHelpersWorkOnRealPkgs =
       let
         cn = composed.lib.caisson.nixpkgs;
-        scoped = cn.mkScope pkgs (callPackage: { probe = callPackage ({ hello }: hello) { }; });
+        scoped = cn.mkScope pkgs (callPackage: {
+          probe = callPackage ({ hello }: hello) { };
+        });
         withPackages = pkgs.extend (
-          (cn.mkPackagesOverlay (callPackage: { probe = callPackage ({ hello }: hello) { }; }))
+          (cn.mkPackagesOverlay (callPackage: {
+            probe = callPackage ({ hello }: hello) { };
+          }))
             "compatScope"
         );
         withPolyfill = pkgs.extend (
