@@ -394,12 +394,33 @@ let
         manifest = composedWithMkLib.caisson-core.manifest;
       in
       builtins.attrNames manifest == [
+        "ecosystems"
         "inputs"
         "libOverlays"
         "modules"
       ]
       && builtins.attrNames manifest.libOverlays == [ "flake-parts" ]
       && composedWithMkLib.caisson ? mkFlake;
+
+    declaredEcosystemServesAdapters =
+      let
+        composedWithDeclaration = inputs.caisson.lib.caisson-core.mkLib {
+          inputs = { };
+          ecosystems.nixpkgs = inputs.nixpkgs;
+          libOverlays = _mkLibOverlay: {
+            nixos = inputs.caisson.libOverlays.nixos;
+          };
+        };
+        system = composedWithDeclaration.caisson.nixos.mkSystemMinimal {
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { lib, ... }:
+            {
+              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+            };
+        };
+      in
+      system.config.nixpkgs.pkgs ? hello;
 
     nixpkgsHelpersWorkOnRealPkgs =
       let
