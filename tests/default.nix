@@ -307,6 +307,50 @@ let
       in
       builtins.isString config.drvPath || builtins.isString (config.build.toplevel.drvPath or null);
 
+    overlayBorneModulesReachAdapters =
+      let
+        contributingLib = inputs.caisson.lib.mkLib {
+          inputs = { };
+          libOverlays = _mkLibOverlay: {
+            nixos = inputs.caisson.libOverlays.nixos;
+            contrib = inputs.caisson.lib.mkLibOverlay (
+              {
+                mkModule,
+                contributeModules,
+                ...
+              }:
+              {
+                imports = [ ];
+                overlay =
+                  _final: prev:
+                  contributeModules prev {
+                    nixos.compat-probe = mkModule "nixos" (
+                      { ... }:
+                      { lib, ... }:
+                      {
+                        options.compatProbe = lib.mkOption {
+                          type = lib.types.bool;
+                          default = true;
+                        };
+                      }
+                    );
+                  };
+              }
+            );
+          };
+        };
+        system = contributingLib.caisson.nixos.mkSystemMinimal {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { lib, ... }:
+            {
+              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+            };
+        };
+      in
+      system.config.compatProbe;
+
     nixpkgsHelpersWorkOnRealPkgs =
       let
         cn = composed.lib.caisson.nixpkgs;
