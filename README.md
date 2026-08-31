@@ -32,13 +32,16 @@ evaluation-shape change that caisson must absorb.
 ./run-tests.sh
 ```
 
-The suite composes caisson's library and its six integrations through
-the caisson-core composition calculus against the pinned world, and
-exercises the calculus's guarantees (dedup, replacement, polyfills,
-the keyless tail) over the real entries plus integration behavior:
-a minimal NixOS system evaluated through `caisson.nixos` against the
-pinned nixpkgs, `caisson.home-manager` source-metadata provenance,
-and the integrations' ecosystemSrc validation.
+The suite composes caisson's seven integrations and its tooling
+through the caisson-core composition calculus against the pinned
+world, and exercises the calculus's guarantees (dedup, replacement,
+polyfills, the keyless tail) over the real entries plus integration
+behavior: both framework namespaces' shapes, a minimal NixOS system
+evaluated through `caisson.nixos` against the pinned nixpkgs,
+`caisson.home-manager` source-metadata provenance, the integrations'
+ecosystemSrc validation, layered ecosystem-source resolution from a
+declared `ecosystems.nixpkgs`, overlay-borne module contribution, and
+the manifest an mkLib composition carries.
 
 ## CI and the private phase
 
