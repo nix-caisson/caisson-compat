@@ -398,9 +398,32 @@ let
         "inputs"
         "libOverlays"
         "modules"
+        "projects"
       ]
       && builtins.attrNames manifest.libOverlays == [ "flake-parts" ]
       && composedWithMkLib.caisson ? mkFlake;
+
+    projectConsumptionComposesCaissonWhole =
+      let
+        composedFromProject = inputs.caisson.lib.caisson-core.mkLib {
+          inputs = { };
+          projects = {
+            caisson = inputs.caisson;
+          };
+        };
+        system = composedFromProject.caisson.nixos.mkSystemMinimal {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { lib, ... }:
+            {
+              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+            };
+        };
+      in
+      composedFromProject.caisson ? mkFlake
+      && composedFromProject.caisson-core.modules.flake ? "caisson/default"
+      && system.config.nixpkgs.pkgs ? hello;
 
     declaredEcosystemServesAdapters =
       let
