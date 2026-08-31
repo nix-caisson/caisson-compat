@@ -33,8 +33,8 @@ evaluation-shape change that caisson must absorb.
 ```
 
 The suite composes caisson's seven integrations and its tooling
-through the caisson-core composition calculus against the pinned
-world, and exercises the calculus's guarantees (dedup, replacement,
+through the caisson-core composition engine against the pinned
+world, and exercises the engine's guarantees (dedup, replacement,
 polyfills, the keyless tail) over the real entries plus integration
 behavior: both framework namespaces' shapes, a minimal NixOS system
 evaluated through `caisson.nixos` against the pinned nixpkgs,
