@@ -1,16 +1,12 @@
 {
   "nodes": {
     "caisson": {
-      "inputs": {
-        "flake-parts": "flake-parts",
-        "nixpkgs-lib": "nixpkgs-lib"
-      },
       "locked": {
-        "lastModified": 1788238557,
-        "narHash": "sha256-Ke7Z+dgR+kdq8Us1a7aQ0Lm82pF5pySVd+/vGV6sijw=",
+        "lastModified": 1788240895,
+        "narHash": "sha256-9+LY+wUwduhcwBx0M/50qiZYMfXKGHLGvvNJc1s/CJg=",
         "owner": "nix-caisson",
         "repo": "caisson",
-        "rev": "892eae61caa112fccef0bd1bfa526e19ebcb7af2",
+        "rev": "393721f415c9ba7b17881d8bb8bc0b5abcbce4c1",
         "type": "github"
       },
       "original": {
@@ -93,27 +89,6 @@
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
-          "caisson",
-          "nixpkgs-lib"
-        ]
-      },
-      "locked": {
-        "lastModified": 1782949081,
-        "narHash": "sha256-vp6Y/Grm98ESt6ceOkWiHWyZRDV3J1RID4w+6NWK9yA=",
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "rev": "17c9d6cdfc60c64f4ee8d306f9bc0b4ccb51481e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "type": "github"
-      }
-    },
-    "flake-parts_2": {
-      "inputs": {
-        "nixpkgs-lib": [
           "system-manager",
           "userborn",
           "nixpkgs"
@@ -133,7 +108,7 @@
         "type": "github"
       }
     },
-    "flake-parts_3": {
+    "flake-parts_2": {
       "inputs": {
         "nixpkgs-lib": [
           "terranix",
@@ -269,24 +244,6 @@
     },
     "nixpkgs-lib": {
       "locked": {
-        "dir": "lib",
-        "lastModified": 1782723713,
-        "narHash": "sha256-oPXCU/SSUokcGaJREHibG1CBX3+s/W7orDWQOZDsEeQ=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "b5aa0fbd538984f6e3d201be0005b4463d8b09f8",
-        "type": "github"
-      },
-      "original": {
-        "dir": "lib",
-        "owner": "NixOS",
-        "ref": "nixos-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs-lib_2": {
-      "locked": {
         "lastModified": 1788057806,
         "narHash": "sha256-DTQSMxzDWmT0zhguthvegnVkn7CFqGCv4IHCzk5ZUpM=",
         "owner": "nix-community",
@@ -335,7 +292,7 @@
         "colmena": "colmena",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-lib": "nixpkgs-lib_2",
+        "nixpkgs-lib": "nixpkgs-lib",
         "system-manager": "system-manager",
         "terranix": "terranix"
       }
@@ -425,7 +382,7 @@
     },
     "terranix": {
       "inputs": {
-        "flake-parts": "flake-parts_3",
+        "flake-parts": "flake-parts_2",
         "import-tree": "import-tree",
         "nixpkgs": [
           "nixpkgs"
@@ -452,7 +409,7 @@
           "system-manager",
           "flake-compat"
         ],
-        "flake-parts": "flake-parts_2",
+        "flake-parts": "flake-parts",
         "nixpkgs": [
           "system-manager",
           "nixpkgs"
