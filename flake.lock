@@ -2,15 +2,18 @@
   "nodes": {
     "caisson": {
       "inputs": {
+        "caisson-core": [
+          "caisson-core"
+        ],
         "flake-parts": "flake-parts",
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1788229822,
-        "narHash": "sha256-xpeccuNnb1LapfB0JW7mCtOi5EKCBYb76upQz/69iKE=",
+        "lastModified": 1788232220,
+        "narHash": "sha256-ctcGmeen/JgYYBq2R48xD6YDL8CgaBzE7cqB7nKjAug=",
         "ref": "refs/heads/main",
-        "rev": "4ee06ddbf3077fad6ebdfbdf016144bcaefbbe2d",
-        "revCount": 52,
+        "rev": "8542257a0f827e659272c3cf2a6c63bc7d805d75",
+        "revCount": 54,
         "type": "git",
         "url": "ssh://git@github.com/nix-caisson/caisson"
       },
