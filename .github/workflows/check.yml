@@ -21,16 +21,18 @@ jobs:
           determinate: false
       - run: nix flake check -L
       - run: nix eval '.#lib.caisson-compat.tests.summary'
-      # The scheduled run is the family's drift detector: advance every
-      # pin, rerun the suite, and land the advance when green.
-      - if: github.event_name == 'schedule'
+      # The drift detector: advance every pin, rerun the suite, and
+      # land the advance when green. Runs on the weekly schedule and
+      # on a manual dispatch, so the advance can be pulled forward
+      # when the family lands a change worth testing against now.
+      - if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           nix flake update
           nix eval '.#lib.caisson-compat.tests.summary'
           if ! git diff --quiet flake.lock; then
-            git config user.name "caisson-compat cron"
+            git config user.name "caisson-compat drift detector"
             git config user.email "noreply@github.com"
             git add flake.lock
-            git commit -m "maint: advance pins (scheduled drift detection)"
+            git commit -m "maint: advance pins (${{ github.event_name }} drift detection)"
             git push
           fi
