@@ -6,11 +6,11 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1788149111,
-        "narHash": "sha256-ichixTwpXWkPkK5YoNU+HgVn+RrtXOOUObMb5SktuEc=",
+        "lastModified": 1788229822,
+        "narHash": "sha256-xpeccuNnb1LapfB0JW7mCtOi5EKCBYb76upQz/69iKE=",
         "ref": "refs/heads/main",
-        "rev": "a8dba9d642bac2dcef6c33753cea661806926098",
-        "revCount": 14,
+        "rev": "4ee06ddbf3077fad6ebdfbdf016144bcaefbbe2d",
+        "revCount": 52,
         "type": "git",
         "url": "ssh://git@github.com/nix-caisson/caisson"
       },
@@ -21,17 +21,17 @@
     },
     "caisson-core": {
       "locked": {
-        "lastModified": 1788137680,
-        "narHash": "sha256-gI9jakI+J2AwZqjewxKOJeD/PpIxz//PlsGNrOiUBgU=",
-        "ref": "refs/heads/main",
-        "rev": "a2a6172a515d5459ca2c01746d8c536ca49c7d21",
-        "revCount": 2,
-        "type": "git",
-        "url": "ssh://git@github.com/nix-caisson/caisson-core"
+        "lastModified": 1788229803,
+        "narHash": "sha256-3r/rwEziAquGPzbCEvzJu+CX3OG+kVwZzHq+6XwQa7M=",
+        "owner": "nix-caisson",
+        "repo": "caisson-core",
+        "rev": "7ad01396e6b56b8db584c6b509a81f4904f48d5c",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/nix-caisson/caisson-core"
+        "owner": "nix-caisson",
+        "repo": "caisson-core",
+        "type": "github"
       }
     },
     "colmena": {

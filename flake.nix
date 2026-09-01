@@ -5,9 +5,9 @@
 
   inputs = {
 
-    # While the caisson repositories are private, the sibling inputs use
-    # SSH URLs; they switch to github: references at publication.
-    caisson-core.url = "git+ssh://git@github.com/nix-caisson/caisson-core";
+    # caisson-core is public; caisson is still private, so its input
+    # keeps the SSH URL until it publishes.
+    caisson-core.url = "github:nix-caisson/caisson-core";
     caisson.url = "git+ssh://git@github.com/nix-caisson/caisson";
 
     nixpkgs-lib.url = "github:nix-community/nixpkgs.lib";
