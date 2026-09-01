@@ -1,9 +1,4 @@
 name: check
-# The sibling caisson repositories are private, so every job needs the
-# CAISSON_CI_SSH_KEY secret (an SSH key with read access to the
-# nix-caisson repositories) to fetch them; without it the jobs skip
-# with a notice. At publication the secret becomes unnecessary and the
-# gate steps can go.
 on:
   push:
     branches: [main]
@@ -16,27 +11,14 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    env:
-      HAVE_KEY: ${{ secrets.CAISSON_CI_SSH_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
-      - if: env.HAVE_KEY == 'false'
-        run: echo "CAISSON_CI_SSH_KEY is not set; sibling repos are private; skipping (see README)"
-      - if: env.HAVE_KEY == 'true'
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.CAISSON_CI_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - if: env.HAVE_KEY == 'true'
-        uses: DeterminateSystems/nix-installer-action@v16
-      - if: env.HAVE_KEY == 'true'
-        run: nix flake check -L
-      - if: env.HAVE_KEY == 'true'
-        run: nix eval '.#lib.caisson-compat.tests.summary'
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - run: nix flake check -L
+      - run: nix eval '.#lib.caisson-compat.tests.summary'
       # The scheduled run is the family's drift detector: advance every
       # pin, rerun the suite, and land the advance when green.
-      - if: env.HAVE_KEY == 'true' && github.event_name == 'schedule'
+      - if: github.event_name == 'schedule'
         run: |
           nix flake update
           nix eval '.#lib.caisson-compat.tests.summary'
