@@ -6,10 +6,11 @@
   inputs = {
 
     # caisson-core is public; caisson is still private, so its input
-    # keeps the SSH URL until it publishes.
+    # keeps the SSH URL until it publishes. caisson's own core pin is
+    # hidden (not an input), so there is nothing to follow; the suite
+    # composes with this caisson-core directly where it cares.
     caisson-core.url = "github:nix-caisson/caisson-core";
     caisson.url = "git+ssh://git@github.com/nix-caisson/caisson";
-    caisson.inputs.caisson-core.follows = "caisson-core";
 
     nixpkgs-lib.url = "github:nix-community/nixpkgs.lib";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
