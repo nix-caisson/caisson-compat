@@ -63,6 +63,6 @@ working tree overriding the corresponding pin.
 
 MIT. See [LICENSE](LICENSE).
 
-caisson-compat is an independent project, not affiliated with or
+Despite the org name, caisson-compat is an independent project, not affiliated with or
 endorsed by the NixOS Foundation. Nix and NixOS are trademarks of the
 NixOS Foundation.
