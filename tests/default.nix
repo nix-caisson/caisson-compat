@@ -337,7 +337,7 @@ let
       builtins.isString config.drvPath || builtins.isString (config.build.toplevel.drvPath or null);
 
     # The closed entry points refuse evaluator arguments; the
-    # upstream-args twins take them in `upstreamArgs`, applied last.
+    # ecosystem-args twins take them in `ecosystemArgs`, applied last.
     evaluatorArgumentsAreRefused =
       let
         refused = f: !(builtins.tryEval f).success;
@@ -383,9 +383,9 @@ let
         moduleLocation = "x";
       });
 
-    upstreamArgsTwinsReachTheEvaluator =
+    ecosystemArgsTwinsReachTheEvaluator =
       let
-        minimal = composed.lib.caisson.nixos.mkConfigurationMinimalWithUpstreamArgs {
+        minimal = composed.lib.caisson.nixos.mkConfigurationMinimalWithEcosystemArgs {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -394,19 +394,19 @@ let
               options.probe = lib.mkOption { type = lib.types.raw; };
               config.probe = "minimal";
             };
-          upstreamArgs.prefix = [ "probe-prefix" ];
+          ecosystemArgs.prefix = [ "probe-prefix" ];
         };
-        terraform = composed.lib.caisson.terranix.mkConfigurationWithUpstreamArgs {
+        terraform = composed.lib.caisson.terranix.mkConfigurationWithEcosystemArgs {
           ecosystemSrc = inputs.terranix;
           configModule = {
             config.terraform.required_version = ">= 1.0";
           };
-          upstreamArgs = {
+          ecosystemArgs = {
             inherit pkgs;
             strip_nulls = false;
           };
         };
-        home = composed.lib.caisson.home-manager.mkConfigurationWithUpstreamArgs {
+        home = composed.lib.caisson.home-manager.mkConfigurationWithEcosystemArgs {
           ecosystemSrc = inputs.home-manager;
           pkgSets.pkgs = pkgs;
           configModule = {
@@ -414,7 +414,7 @@ let
             home.homeDirectory = "/home/probe";
             home.stateVersion = "24.05";
           };
-          upstreamArgs.check = false;
+          ecosystemArgs.check = false;
         };
       in
       minimal.config.probe == "minimal"
