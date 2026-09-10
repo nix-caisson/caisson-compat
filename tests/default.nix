@@ -302,7 +302,7 @@ let
           ecosystemSrc = inputs.colmena;
           pkgSets.pkgs = pkgs;
           configModule = { };
-          probe-node =
+          nodes.probe-node =
             { ... }:
             {
               imports = [ minimalNixosBase ];
@@ -335,6 +335,91 @@ let
         };
       in
       builtins.isString config.drvPath || builtins.isString (config.build.toplevel.drvPath or null);
+
+    # The closed entry points refuse evaluator arguments; the
+    # unsupervised twins take them in `evaluatorArgs`, applied last.
+    evaluatorArgumentsAreRefused =
+      let
+        refused = f: !(builtins.tryEval f).success;
+      in
+      refused (composed.lib.caisson.nixos.mkConfiguration {
+        ecosystemSrc = inputs.nixpkgs;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        pkgs = pkgs;
+      })
+      && refused (composed.lib.caisson.nixos.mkConfigurationMinimal {
+        ecosystemSrc = inputs.nixpkgs;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        extraModules = [ ];
+      })
+      && refused (composed.lib.caisson.home-manager.mkConfiguration {
+        ecosystemSrc = inputs.home-manager;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        extraSpecialArgs = { };
+      })
+      && refused (composed.lib.caisson.colmena.mkConfiguration {
+        ecosystemSrc = inputs.colmena;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        modules = [ ];
+      })
+      && refused (composed.lib.caisson.terranix.mkConfiguration {
+        ecosystemSrc = inputs.terranix;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        extraArgs = { };
+      })
+      && refused (composed.lib.caisson.system-manager.mkConfiguration {
+        ecosystemSrc = inputs.system-manager;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        overlays = [ ];
+      })
+      && refused (composed.lib.caisson.flake-parts.mkConfiguration {
+        configModule = { };
+        moduleLocation = "x";
+      });
+
+    unsupervisedTwinsReachTheEvaluator =
+      let
+        minimal = composed.lib.caisson.nixos.mkConfigurationMinimalUnsupervised {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { lib, ... }:
+            {
+              options.probe = lib.mkOption { type = lib.types.raw; };
+              config.probe = "minimal";
+            };
+          evaluatorArgs.prefix = [ "probe-prefix" ];
+        };
+        terraform = composed.lib.caisson.terranix.mkConfigurationUnsupervised {
+          ecosystemSrc = inputs.terranix;
+          configModule = {
+            config.terraform.required_version = ">= 1.0";
+          };
+          evaluatorArgs = {
+            inherit pkgs;
+            strip_nulls = false;
+          };
+        };
+        home = composed.lib.caisson.home-manager.mkConfigurationUnsupervised {
+          ecosystemSrc = inputs.home-manager;
+          pkgSets.pkgs = pkgs;
+          configModule = {
+            home.username = "probe";
+            home.homeDirectory = "/home/probe";
+            home.stateVersion = "24.05";
+          };
+          evaluatorArgs.check = false;
+        };
+      in
+      minimal.config.probe == "minimal"
+      && builtins.isString terraform.drvPath
+      && builtins.isString home.activationPackage.drvPath;
 
     overlayBorneModulesReachAdapters =
       let
@@ -412,15 +497,16 @@ let
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
-            { lib, ... }:
+            { pkgs, lib, ... }:
             {
-              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+              options.probe = lib.mkOption { type = lib.types.raw; };
+              config.probe = pkgs ? hello;
             };
         };
       in
       composedFromProject.caisson.flake-parts ? mkConfiguration
       && composedFromProject.caisson-core.modules.flake ? "caisson/default"
-      && system.config.nixpkgs.pkgs ? hello;
+      && system.config.probe;
 
     declaredEcosystemServesAdapters =
       let
