@@ -337,7 +337,7 @@ let
       builtins.isString config.drvPath || builtins.isString (config.build.toplevel.drvPath or null);
 
     # The closed entry points refuse evaluator arguments; the
-    # unsupervised twins take them in `evaluatorArgs`, applied last.
+    # upstream-args twins take them in `upstreamArgs`, applied last.
     evaluatorArgumentsAreRefused =
       let
         refused = f: !(builtins.tryEval f).success;
@@ -383,9 +383,9 @@ let
         moduleLocation = "x";
       });
 
-    unsupervisedTwinsReachTheEvaluator =
+    upstreamArgsTwinsReachTheEvaluator =
       let
-        minimal = composed.lib.caisson.nixos.mkConfigurationMinimalUnsupervised {
+        minimal = composed.lib.caisson.nixos.mkConfigurationMinimalWithUpstreamArgs {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -394,19 +394,19 @@ let
               options.probe = lib.mkOption { type = lib.types.raw; };
               config.probe = "minimal";
             };
-          evaluatorArgs.prefix = [ "probe-prefix" ];
+          upstreamArgs.prefix = [ "probe-prefix" ];
         };
-        terraform = composed.lib.caisson.terranix.mkConfigurationUnsupervised {
+        terraform = composed.lib.caisson.terranix.mkConfigurationWithUpstreamArgs {
           ecosystemSrc = inputs.terranix;
           configModule = {
             config.terraform.required_version = ">= 1.0";
           };
-          evaluatorArgs = {
+          upstreamArgs = {
             inherit pkgs;
             strip_nulls = false;
           };
         };
-        home = composed.lib.caisson.home-manager.mkConfigurationUnsupervised {
+        home = composed.lib.caisson.home-manager.mkConfigurationWithUpstreamArgs {
           ecosystemSrc = inputs.home-manager;
           pkgSets.pkgs = pkgs;
           configModule = {
@@ -414,7 +414,7 @@ let
             home.homeDirectory = "/home/probe";
             home.stateVersion = "24.05";
           };
-          evaluatorArgs.check = false;
+          upstreamArgs.check = false;
         };
       in
       minimal.config.probe == "minimal"
