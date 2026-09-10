@@ -301,6 +301,7 @@ let
         hive = composed.lib.caisson.colmena.mkConfiguration {
           ecosystemSrc = inputs.colmena;
           meta.nixpkgs = pkgs;
+          configModule = { };
           probe-node =
             { ... }:
             {
@@ -316,7 +317,9 @@ let
         terraform = composed.lib.caisson.terranix.mkConfiguration {
           ecosystemSrc = inputs.terranix;
           system = "x86_64-linux";
-          modules = [ { config.terraform.required_version = ">= 1.0"; } ];
+          configModule = {
+            config.terraform.required_version = ">= 1.0";
+          };
         };
       in
       builtins.isString terraform.drvPath;
@@ -325,14 +328,12 @@ let
       let
         config = composed.lib.caisson.system-manager.mkConfiguration {
           ecosystemSrc = inputs.system-manager;
-          modules = [
-            {
-              config = {
-                nixpkgs.hostPlatform = "x86_64-linux";
-                system-manager.allowAnyDistro = true;
-              };
-            }
-          ];
+          configModule = {
+            config = {
+              nixpkgs.hostPlatform = "x86_64-linux";
+              system-manager.allowAnyDistro = true;
+            };
+          };
         };
       in
       builtins.isString config.drvPath || builtins.isString (config.build.toplevel.drvPath or null);
