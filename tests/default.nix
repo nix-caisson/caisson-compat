@@ -300,7 +300,7 @@ let
       let
         hive = composed.lib.caisson.colmena.mkConfiguration {
           ecosystemSrc = inputs.colmena;
-          meta.nixpkgs = pkgs;
+          pkgSets.pkgs = pkgs;
           configModule = { };
           probe-node =
             { ... }:
@@ -316,7 +316,7 @@ let
       let
         terraform = composed.lib.caisson.terranix.mkConfiguration {
           ecosystemSrc = inputs.terranix;
-          system = "x86_64-linux";
+          pkgSets.pkgs = pkgs;
           configModule = {
             config.terraform.required_version = ">= 1.0";
           };
@@ -328,11 +328,9 @@ let
       let
         config = composed.lib.caisson.system-manager.mkConfiguration {
           ecosystemSrc = inputs.system-manager;
+          pkgSets.pkgs = pkgs;
           configModule = {
-            config = {
-              nixpkgs.hostPlatform = "x86_64-linux";
-              system-manager.allowAnyDistro = true;
-            };
+            config.system-manager.allowAnyDistro = true;
           };
         };
       in
