@@ -37,15 +37,13 @@ let
   expectedCaissonNames = [
     "colmena"
     "eval-weight"
+    "flake-parts"
     "home-manager"
-    "mkFlake"
-    "mkFlakeModule"
     "mkMemoizedDerivationRead"
     "nixos"
     "nixpkgs"
     "system-manager"
     "terranix"
-    "types"
   ];
 
   expectedCoreNames = [
@@ -179,7 +177,7 @@ let
 
     minimalNixosSystemEvaluates =
       let
-        system = composed.lib.caisson.nixos.mkSystemMinimal {
+        system = composed.lib.caisson.nixos.mkConfigurationMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
           configModule =
@@ -205,13 +203,13 @@ let
       let
         throws = expr: !(builtins.tryEval (builtins.deepSeq expr true)).success;
       in
-      throws (composed.lib.caisson.colmena.mkColmenaHive { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson.terranix.mkTerranixConfiguration { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson.system-manager.mkSystemConfig { ecosystemSrc = { }; });
+      throws (composed.lib.caisson.colmena.mkConfiguration { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson.terranix.mkConfiguration { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson.system-manager.mkConfiguration { ecosystemSrc = { }; });
 
     homeConfigurationEvaluatesEndToEnd =
       let
-        home = composed.lib.caisson.home-manager.mkHomeConfiguration {
+        home = composed.lib.caisson.home-manager.mkConfiguration {
           ecosystemSrc = inputs.home-manager;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -232,7 +230,7 @@ let
 
     nixosAdapterUpstreamModeEvaluatesEndToEnd =
       let
-        system = composed.lib.caisson.nixos.mkSystem {
+        system = composed.lib.caisson.nixos.mkConfiguration {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -270,7 +268,7 @@ let
 
     nixosAdapterUserServiceModeEvaluatesEndToEnd =
       let
-        system = composed.lib.caisson.nixos.mkSystem {
+        system = composed.lib.caisson.nixos.mkConfiguration {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -300,7 +298,7 @@ let
 
     colmenaHiveEvaluatesEndToEnd =
       let
-        hive = composed.lib.caisson.colmena.mkColmenaHive {
+        hive = composed.lib.caisson.colmena.mkConfiguration {
           ecosystemSrc = inputs.colmena;
           meta.nixpkgs = pkgs;
           probe-node =
@@ -315,7 +313,7 @@ let
 
     terranixConfigurationEvaluatesEndToEnd =
       let
-        terraform = composed.lib.caisson.terranix.mkTerranixConfiguration {
+        terraform = composed.lib.caisson.terranix.mkConfiguration {
           ecosystemSrc = inputs.terranix;
           system = "x86_64-linux";
           modules = [ { config.terraform.required_version = ">= 1.0"; } ];
@@ -325,7 +323,7 @@ let
 
     systemManagerConfigEvaluatesEndToEnd =
       let
-        config = composed.lib.caisson.system-manager.mkSystemConfig {
+        config = composed.lib.caisson.system-manager.mkConfiguration {
           ecosystemSrc = inputs.system-manager;
           modules = [
             {
@@ -371,7 +369,7 @@ let
             );
           };
         };
-        system = contributingLib.caisson.nixos.mkSystemMinimal {
+        system = contributingLib.caisson.nixos.mkConfigurationMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -401,7 +399,7 @@ let
         "projects"
       ]
       && builtins.attrNames manifest.libOverlays == [ "flake-parts" ]
-      && composedWithMkLib.caisson ? mkFlake;
+      && composedWithMkLib.caisson.flake-parts ? mkConfiguration;
 
     projectConsumptionComposesCaissonWhole =
       let
@@ -411,7 +409,7 @@ let
             caisson = inputs.caisson;
           };
         };
-        system = composedFromProject.caisson.nixos.mkSystemMinimal {
+        system = composedFromProject.caisson.nixos.mkConfigurationMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -421,7 +419,7 @@ let
             };
         };
       in
-      composedFromProject.caisson ? mkFlake
+      composedFromProject.caisson.flake-parts ? mkConfiguration
       && composedFromProject.caisson-core.modules.flake ? "caisson/default"
       && system.config.nixpkgs.pkgs ? hello;
 
@@ -434,7 +432,7 @@ let
             nixos = inputs.caisson.libOverlays.nixos;
           };
         };
-        system = composedWithDeclaration.caisson.nixos.mkSystemMinimal {
+        system = composedWithDeclaration.caisson.nixos.mkConfigurationMinimal {
           pkgSets.pkgs = pkgs;
           configModule =
             { lib, ... }:
