@@ -428,6 +428,27 @@ let
       && hive.nodes.network.config.networking.hostName == "network"
       && builtins.attrNames (hive.evalSelected [ "meta" ]) == [ "meta" ];
 
+    # Names colmena's `--on` filter cannot express are refused at hive
+    # evaluation.
+    colmenaRefusesUnaddressableNames =
+      let
+        refused =
+          nodeName:
+          !(builtins.tryEval
+            (hiveLib.caisson.colmena.mkConfiguration {
+              configModule =
+                { mkNixosConfiguration, ... }:
+                {
+                  nodes.${nodeName} = mkNixosConfiguration {
+                    pkgSets.pkgs = pkgs;
+                    configModule = minimalNixosBase;
+                  };
+                };
+            }).toplevel
+          ).success;
+      in
+      refused "a,b" && refused "@tagged" && refused "";
+
     terranixConfigurationEvaluatesEndToEnd =
       let
         terraform = composed.lib.caisson.terranix.mkConfiguration {
