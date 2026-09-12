@@ -311,21 +311,23 @@ let
 
     colmenaHiveEvaluatesEndToEnd =
       let
-        node = hiveLib.caisson.colmena.mkNixosConfiguration {
-          pkgSets.pkgs = pkgs;
-          configModule = {
-            imports = [ minimalNixosBase ];
-            networking.hostName = "probe";
-            deployment.targetHost = "probe";
-          };
-        };
         hive = hiveLib.caisson.colmena.mkConfiguration {
           pkgSets.pkgs = pkgs;
-          configModule = {
-            meta.allowApplyAll = false;
-            nodes.probe-node = node;
-          };
+          configModule =
+            { mkNixosConfiguration, ... }:
+            {
+              meta.allowApplyAll = false;
+              nodes.probe-node = mkNixosConfiguration {
+                pkgSets.pkgs = pkgs;
+                configModule = {
+                  imports = [ minimalNixosBase ];
+                  networking.hostName = "probe";
+                  deployment.targetHost = "probe";
+                };
+              };
+            };
         };
+        node = hive.nodes.probe-node;
       in
       hive.__schema == (inputs.colmena.lib.makeHive { }).__schema
       && hive.toplevel.probe-node.drvPath == node.config.system.build.toplevel.drvPath
@@ -335,18 +337,28 @@ let
 
     # A node is the NixOS configuration nixos.mkConfiguration builds from
     # the same module, with colmena's deployment options declared: the
-    # extra modules leave the system untouched.
+    # extra modules leave the system untouched. The node's ecosystem
+    # source is nixpkgs, explicit here.
     colmenaNodesAreNixosConfigurations =
       let
         hostModule = {
           imports = [ minimalNixosBase ];
           networking.hostName = "probe";
         };
-        node = hiveLib.caisson.colmena.mkNixosConfiguration {
-          pkgSets.pkgs = pkgs;
-          configModule = hostModule;
+        hive = hiveLib.caisson.colmena.mkConfiguration {
+          configModule =
+            { mkNixosConfiguration, ... }:
+            {
+              nodes.probe = mkNixosConfiguration {
+                ecosystemSrc = inputs.nixpkgs;
+                pkgSets.pkgs = pkgs;
+                configModule = hostModule;
+              };
+            };
         };
+        node = hive.nodes.probe;
         system = hiveLib.caisson.nixos.mkConfiguration {
+          ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule = hostModule;
         };
@@ -355,16 +367,31 @@ let
       && node.options ? deployment
       && node.pkgs.hello.drvPath == pkgs.hello.drvPath;
 
-    # A hive refuses a node that is not a colmena node.
+    # A hive refuses a node that is not a colmena node, and the node
+    # constructor refuses `deployment` as an argument.
     colmenaRefusesPlainNixosNodes =
-      !(builtins.tryEval
+      let
+        refused = f: !(builtins.tryEval f).success;
+      in
+      refused
         (hiveLib.caisson.colmena.mkConfiguration {
           configModule.nodes.plain = hiveLib.caisson.nixos.mkConfiguration {
-              pkgSets.pkgs = pkgs;
+            pkgSets.pkgs = pkgs;
             configModule = minimalNixosBase;
           };
         }).toplevel
-      ).success;
+      && refused
+        (hiveLib.caisson.colmena.mkConfiguration {
+          configModule =
+            { mkNixosConfiguration, ... }:
+            {
+              nodes.bad = mkNixosConfiguration {
+                pkgSets.pkgs = pkgs;
+                configModule = { };
+                deployment.targetHost = "x";
+              };
+            };
+        }).toplevel;
 
     terranixConfigurationEvaluatesEndToEnd =
       let
@@ -419,12 +446,7 @@ let
         configModule = { };
         nodes = { };
       })
-      && refused (composed.lib.caisson.colmena.mkNixosConfiguration {
-        ecosystemSrc = inputs.colmena;
-        pkgSets.pkgs = pkgs;
-        configModule = { };
-        deployment.targetHost = "x";
-      })
+
       && refused (composed.lib.caisson.terranix.mkConfiguration {
         ecosystemSrc = inputs.terranix;
         pkgSets.pkgs = pkgs;
