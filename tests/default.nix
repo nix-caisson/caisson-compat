@@ -37,15 +37,13 @@ let
   expectedCaissonNames = [
     "colmena"
     "eval-weight"
+    "flake-parts"
     "home-manager"
-    "mkFlake"
-    "mkFlakeModule"
     "mkMemoizedDerivationRead"
     "nixos"
     "nixpkgs"
     "system-manager"
     "terranix"
-    "types"
   ];
 
   expectedCoreNames = [
@@ -179,7 +177,7 @@ let
 
     minimalNixosSystemEvaluates =
       let
-        system = composed.lib.caisson.nixos.mkSystemMinimal {
+        system = composed.lib.caisson.nixos.mkConfigurationMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
           configModule =
@@ -205,13 +203,13 @@ let
       let
         throws = expr: !(builtins.tryEval (builtins.deepSeq expr true)).success;
       in
-      throws (composed.lib.caisson.colmena.mkColmenaHive { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson.terranix.mkTerranixConfiguration { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson.system-manager.mkSystemConfig { ecosystemSrc = { }; });
+      throws (composed.lib.caisson.colmena.mkConfiguration { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson.terranix.mkConfiguration { ecosystemSrc = { }; })
+      && throws (composed.lib.caisson.system-manager.mkConfiguration { ecosystemSrc = { }; });
 
     homeConfigurationEvaluatesEndToEnd =
       let
-        home = composed.lib.caisson.home-manager.mkHomeConfiguration {
+        home = composed.lib.caisson.home-manager.mkConfiguration {
           ecosystemSrc = inputs.home-manager;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -232,7 +230,7 @@ let
 
     nixosAdapterUpstreamModeEvaluatesEndToEnd =
       let
-        system = composed.lib.caisson.nixos.mkSystem {
+        system = composed.lib.caisson.nixos.mkConfiguration {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -270,7 +268,7 @@ let
 
     nixosAdapterUserServiceModeEvaluatesEndToEnd =
       let
-        system = composed.lib.caisson.nixos.mkSystem {
+        system = composed.lib.caisson.nixos.mkConfiguration {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -298,46 +296,267 @@ let
       && system.config.systemd.user.services.home-manager.unitConfig.ConditionUser == "probe"
       && builtins.isString system.config.system.build.toplevel.drvPath;
 
+    # The colmena probes compose with declared ecosystems: a node's
+    # `ecosystemSrc` is colmena's, and nixpkgs resolves from the
+    # declaration, as it does in a consumer flake.
+    hiveLib = inputs.caisson.lib.caisson-core.mkLib {
+      inputs = { };
+      projects = {
+        caisson = inputs.caisson;
+      };
+      ecosystems = {
+        inherit (inputs) nixpkgs colmena;
+      };
+    };
+
     colmenaHiveEvaluatesEndToEnd =
       let
-        hive = composed.lib.caisson.colmena.mkColmenaHive {
-          ecosystemSrc = inputs.colmena;
-          meta.nixpkgs = pkgs;
-          probe-node =
-            { ... }:
+        hive = hiveLib.caisson.colmena.mkConfiguration {
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { mkNixosConfiguration, ... }:
             {
-              imports = [ minimalNixosBase ];
-              deployment.targetHost = "probe";
+              meta.allowApplyAll = false;
+              nodes.probe-node = mkNixosConfiguration {
+                pkgSets.pkgs = pkgs;
+                configModule = {
+                  imports = [ minimalNixosBase ];
+                  networking.hostName = "probe";
+                  deployment.targetHost = "probe";
+                };
+              };
+            };
+        };
+        node = hive.nodes.probe-node;
+      in
+      hive.__schema == (inputs.colmena.lib.makeHive { }).__schema
+      && hive.toplevel.probe-node.drvPath == node.config.system.build.toplevel.drvPath
+      && hive.deploymentConfig.probe-node.targetHost == "probe"
+      && hive.metaConfig.allowApplyAll == false
+      && builtins.attrNames (hive.evalSelectedDrvPaths [ "probe-node" ]) == [ "probe-node" ];
+
+    # A node is the NixOS configuration nixos.mkConfiguration builds from
+    # the same module, with colmena's deployment options declared: the
+    # extra modules leave the system untouched. The node's ecosystem
+    # source is nixpkgs, explicit here.
+    colmenaNodesAreNixosConfigurations =
+      let
+        hostModule = {
+          imports = [ minimalNixosBase ];
+          networking.hostName = "probe";
+        };
+        hive = hiveLib.caisson.colmena.mkConfiguration {
+          configModule =
+            { mkNixosConfiguration, ... }:
+            {
+              nodes.probe = mkNixosConfiguration {
+                ecosystemSrc = inputs.nixpkgs;
+                pkgSets.pkgs = pkgs;
+                configModule = hostModule;
+              };
+            };
+        };
+        node = hive.nodes.probe;
+        system = hiveLib.caisson.nixos.mkConfiguration {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = pkgs;
+          configModule = hostModule;
+        };
+      in
+      node.config.system.build.toplevel.drvPath == system.config.system.build.toplevel.drvPath
+      && node.options ? deployment
+      && node.pkgs.hello.drvPath == pkgs.hello.drvPath;
+
+    # A hive refuses a node that is not a colmena node, and the node
+    # constructor refuses `deployment` as an argument.
+    colmenaRefusesPlainNixosNodes =
+      let
+        refused = f: !(builtins.tryEval f).success;
+      in
+      refused
+        (hiveLib.caisson.colmena.mkConfiguration {
+          configModule.nodes.plain = hiveLib.caisson.nixos.mkConfiguration {
+            pkgSets.pkgs = pkgs;
+            configModule = minimalNixosBase;
+          };
+        }).toplevel
+      && refused
+        (hiveLib.caisson.colmena.mkConfiguration {
+          configModule =
+            { mkNixosConfiguration, ... }:
+            {
+              nodes.bad = mkNixosConfiguration {
+                pkgSets.pkgs = pkgs;
+                configModule = { };
+                deployment.targetHost = "x";
+              };
+            };
+        }).toplevel;
+
+    # Node names colmena's flat hive reserved (meta, defaults, network)
+    # are ordinary names here, and every node sees `name` and `nodes`
+    # as colmena's own evaluator provided them.
+    colmenaNodesAreNamedFreely =
+      let
+        hive = hiveLib.caisson.colmena.mkConfiguration {
+          configModule =
+            { mkNixosConfiguration, ... }:
+            {
+              nodes = builtins.mapAttrs (
+                hostName: peer:
+                mkNixosConfiguration {
+                  pkgSets.pkgs = pkgs;
+                  configModule =
+                    { name, nodes, lib, ... }:
+                    {
+                      imports = [ minimalNixosBase ];
+                      networking.hostName = name;
+                      deployment.targetHost = nodes.${peer}.config.networking.hostName;
+                      deployment.tags = [ peer ];
+                    };
+                }
+              ) {
+                meta = "defaults";
+                defaults = "network";
+                network = "meta";
+              };
             };
         };
       in
-      builtins.isString hive.nodes.probe-node.config.system.build.toplevel.drvPath;
+      builtins.attrNames hive.deploymentConfig == [ "defaults" "meta" "network" ]
+      && hive.deploymentConfig.meta.targetHost == "defaults"
+      && hive.nodes.network.config.networking.hostName == "network"
+      && builtins.attrNames (hive.evalSelected [ "meta" ]) == [ "meta" ];
+
+    # Names colmena's `--on` filter cannot express are refused at hive
+    # evaluation.
+    colmenaRefusesUnaddressableNames =
+      let
+        refused =
+          nodeName:
+          !(builtins.tryEval
+            (hiveLib.caisson.colmena.mkConfiguration {
+              configModule =
+                { mkNixosConfiguration, ... }:
+                {
+                  nodes.${nodeName} = mkNixosConfiguration {
+                    pkgSets.pkgs = pkgs;
+                    configModule = minimalNixosBase;
+                  };
+                };
+            }).toplevel
+          ).success;
+      in
+      refused "a,b" && refused "@tagged" && refused "";
 
     terranixConfigurationEvaluatesEndToEnd =
       let
-        terraform = composed.lib.caisson.terranix.mkTerranixConfiguration {
+        terraform = composed.lib.caisson.terranix.mkConfiguration {
           ecosystemSrc = inputs.terranix;
-          system = "x86_64-linux";
-          modules = [ { config.terraform.required_version = ">= 1.0"; } ];
+          pkgSets.pkgs = pkgs;
+          configModule = {
+            config.terraform.required_version = ">= 1.0";
+          };
         };
       in
       builtins.isString terraform.drvPath;
 
     systemManagerConfigEvaluatesEndToEnd =
       let
-        config = composed.lib.caisson.system-manager.mkSystemConfig {
+        config = composed.lib.caisson.system-manager.mkConfiguration {
           ecosystemSrc = inputs.system-manager;
-          modules = [
-            {
-              config = {
-                nixpkgs.hostPlatform = "x86_64-linux";
-                system-manager.allowAnyDistro = true;
-              };
-            }
-          ];
+          pkgSets.pkgs = pkgs;
+          configModule = {
+            config.system-manager.allowAnyDistro = true;
+          };
         };
       in
       builtins.isString config.drvPath || builtins.isString (config.build.toplevel.drvPath or null);
+
+    # The closed entry points refuse evaluator arguments; the
+    # ecosystem-args twins take them in `ecosystemArgs`, applied last.
+    evaluatorArgumentsAreRefused =
+      let
+        refused = f: !(builtins.tryEval f).success;
+      in
+      refused (composed.lib.caisson.nixos.mkConfiguration {
+        ecosystemSrc = inputs.nixpkgs;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        pkgs = pkgs;
+      })
+      && refused (composed.lib.caisson.nixos.mkConfigurationMinimal {
+        ecosystemSrc = inputs.nixpkgs;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        extraModules = [ ];
+      })
+      && refused (composed.lib.caisson.home-manager.mkConfiguration {
+        ecosystemSrc = inputs.home-manager;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        extraSpecialArgs = { };
+      })
+      && refused (composed.lib.caisson.colmena.mkConfiguration {
+        ecosystemSrc = inputs.colmena;
+        configModule = { };
+        nodes = { };
+      })
+
+      && refused (composed.lib.caisson.terranix.mkConfiguration {
+        ecosystemSrc = inputs.terranix;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        extraArgs = { };
+      })
+      && refused (composed.lib.caisson.system-manager.mkConfiguration {
+        ecosystemSrc = inputs.system-manager;
+        pkgSets.pkgs = pkgs;
+        configModule = { };
+        overlays = [ ];
+      })
+      && refused (composed.lib.caisson.flake-parts.mkConfiguration {
+        configModule = { };
+        moduleLocation = "x";
+      });
+
+    ecosystemArgsTwinsReachTheEvaluator =
+      let
+        minimal = composed.lib.caisson.nixos.mkConfigurationMinimalWithEcosystemArgs {
+          ecosystemSrc = inputs.nixpkgs;
+          pkgSets.pkgs = pkgs;
+          configModule =
+            { lib, ... }:
+            {
+              options.probe = lib.mkOption { type = lib.types.raw; };
+              config.probe = "minimal";
+            };
+          ecosystemArgs.prefix = [ "probe-prefix" ];
+        };
+        terraform = composed.lib.caisson.terranix.mkConfigurationWithEcosystemArgs {
+          ecosystemSrc = inputs.terranix;
+          configModule = {
+            config.terraform.required_version = ">= 1.0";
+          };
+          ecosystemArgs = {
+            inherit pkgs;
+            strip_nulls = false;
+          };
+        };
+        home = composed.lib.caisson.home-manager.mkConfigurationWithEcosystemArgs {
+          ecosystemSrc = inputs.home-manager;
+          pkgSets.pkgs = pkgs;
+          configModule = {
+            home.username = "probe";
+            home.homeDirectory = "/home/probe";
+            home.stateVersion = "24.05";
+          };
+          ecosystemArgs.check = false;
+        };
+      in
+      minimal.config.probe == "minimal"
+      && builtins.isString terraform.drvPath
+      && builtins.isString home.activationPackage.drvPath;
 
     overlayBorneModulesReachAdapters =
       let
@@ -371,7 +590,7 @@ let
             );
           };
         };
-        system = contributingLib.caisson.nixos.mkSystemMinimal {
+        system = contributingLib.caisson.nixos.mkConfigurationMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -401,7 +620,7 @@ let
         "projects"
       ]
       && builtins.attrNames manifest.libOverlays == [ "flake-parts" ]
-      && composedWithMkLib.caisson ? mkFlake;
+      && composedWithMkLib.caisson.flake-parts ? mkConfiguration;
 
     projectConsumptionComposesCaissonWhole =
       let
@@ -411,19 +630,20 @@ let
             caisson = inputs.caisson;
           };
         };
-        system = composedFromProject.caisson.nixos.mkSystemMinimal {
+        system = composedFromProject.caisson.nixos.mkConfigurationMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
-            { lib, ... }:
+            { pkgs, lib, ... }:
             {
-              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+              options.probe = lib.mkOption { type = lib.types.raw; };
+              config.probe = pkgs ? hello;
             };
         };
       in
-      composedFromProject.caisson ? mkFlake
+      composedFromProject.caisson.flake-parts ? mkConfiguration
       && composedFromProject.caisson-core.modules.flake ? "caisson/default"
-      && system.config.nixpkgs.pkgs ? hello;
+      && system.config.probe;
 
     declaredEcosystemServesAdapters =
       let
@@ -434,7 +654,7 @@ let
             nixos = inputs.caisson.libOverlays.nixos;
           };
         };
-        system = composedWithDeclaration.caisson.nixos.mkSystemMinimal {
+        system = composedWithDeclaration.caisson.nixos.mkConfigurationMinimal {
           pkgSets.pkgs = pkgs;
           configModule =
             { lib, ... }:
