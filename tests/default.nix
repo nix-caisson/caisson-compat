@@ -296,51 +296,75 @@ let
       && system.config.systemd.user.services.home-manager.unitConfig.ConditionUser == "probe"
       && builtins.isString system.config.system.build.toplevel.drvPath;
 
+    # The colmena probes compose with declared ecosystems: a node's
+    # `ecosystemSrc` is colmena's, and nixpkgs resolves from the
+    # declaration, as it does in a consumer flake.
+    hiveLib = inputs.caisson.lib.caisson-core.mkLib {
+      inputs = { };
+      projects = {
+        caisson = inputs.caisson;
+      };
+      ecosystems = {
+        inherit (inputs) nixpkgs colmena;
+      };
+    };
+
     colmenaHiveEvaluatesEndToEnd =
       let
-        hive = composed.lib.caisson.colmena.mkConfiguration {
-          ecosystemSrc = inputs.colmena;
+        node = hiveLib.caisson.colmena.mkNixosConfiguration {
           pkgSets.pkgs = pkgs;
-          configModule = minimalNixosBase;
-          nodes.probe-node = {
-            configModule = {
-              networking.hostName = "probe";
-            };
+          configModule = {
+            imports = [ minimalNixosBase ];
+            networking.hostName = "probe";
             deployment.targetHost = "probe";
           };
         };
+        hive = hiveLib.caisson.colmena.mkConfiguration {
+          pkgSets.pkgs = pkgs;
+          configModule = {
+            meta.allowApplyAll = false;
+            nodes.probe-node = node;
+          };
+        };
       in
-      builtins.isString hive.nodes.probe-node.config.system.build.toplevel.drvPath
-      && hive.nodes.probe-node.config.deployment.targetHost == "probe";
+      hive.__schema == (inputs.colmena.lib.makeHive { }).__schema
+      && hive.toplevel.probe-node.drvPath == node.config.system.build.toplevel.drvPath
+      && hive.deploymentConfig.probe-node.targetHost == "probe"
+      && hive.metaConfig.allowApplyAll == false
+      && builtins.attrNames (hive.evalSelectedDrvPaths [ "probe-node" ]) == [ "probe-node" ];
 
-    # A colmena node is the NixOS configuration lib.caisson.nixos builds
-    # from the same modules: same toplevel derivation, and the node's
-    # `pkgs` is the package set handed in.
+    # A node is the NixOS configuration nixos.mkConfiguration builds from
+    # the same module, with colmena's deployment options declared: the
+    # extra modules leave the system untouched.
     colmenaNodesAreNixosConfigurations =
       let
         hostModule = {
+          imports = [ minimalNixosBase ];
           networking.hostName = "probe";
         };
-        hive = composed.lib.caisson.colmena.mkConfiguration {
-          ecosystemSrc = inputs.colmena;
+        node = hiveLib.caisson.colmena.mkNixosConfiguration {
           pkgSets.pkgs = pkgs;
-          configModule = minimalNixosBase;
-          nodes.probe-node.configModule = hostModule;
+          configModule = hostModule;
         };
-        system = composed.lib.caisson.nixos.mkConfiguration {
-          ecosystemSrc = inputs.nixpkgs;
+        system = hiveLib.caisson.nixos.mkConfiguration {
           pkgSets.pkgs = pkgs;
-          configModule = {
-            imports = [
-              minimalNixosBase
-              hostModule
-            ];
-          };
+          configModule = hostModule;
         };
-        node = hive.nodes.probe-node;
       in
       node.config.system.build.toplevel.drvPath == system.config.system.build.toplevel.drvPath
+      && node.options ? deployment
       && node.pkgs.hello.drvPath == pkgs.hello.drvPath;
+
+    # A hive refuses a node that is not a colmena node.
+    colmenaRefusesPlainNixosNodes =
+      !(builtins.tryEval
+        (hiveLib.caisson.colmena.mkConfiguration {
+          configModule.nodes.plain = hiveLib.caisson.nixos.mkConfiguration {
+              pkgSets.pkgs = pkgs;
+            configModule = minimalNixosBase;
+          };
+        }).toplevel
+      ).success;
 
     terranixConfigurationEvaluatesEndToEnd =
       let
@@ -392,15 +416,14 @@ let
       })
       && refused (composed.lib.caisson.colmena.mkConfiguration {
         ecosystemSrc = inputs.colmena;
-        pkgSets.pkgs = pkgs;
         configModule = { };
-        modules = [ ];
+        nodes = { };
       })
-      && refused (composed.lib.caisson.colmena.mkConfiguration {
+      && refused (composed.lib.caisson.colmena.mkNixosConfiguration {
         ecosystemSrc = inputs.colmena;
         pkgSets.pkgs = pkgs;
         configModule = { };
-        meta.nixpkgs = pkgs;
+        deployment.targetHost = "x";
       })
       && refused (composed.lib.caisson.terranix.mkConfiguration {
         ecosystemSrc = inputs.terranix;
