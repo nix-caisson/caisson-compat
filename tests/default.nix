@@ -393,6 +393,41 @@ let
             };
         }).toplevel;
 
+    # Node names colmena's flat hive reserved (meta, defaults, network)
+    # are ordinary names here, and every node sees `name` and `nodes`
+    # as colmena's own evaluator provided them.
+    colmenaNodesAreNamedFreely =
+      let
+        hive = hiveLib.caisson.colmena.mkConfiguration {
+          configModule =
+            { mkNixosConfiguration, ... }:
+            {
+              nodes = builtins.mapAttrs (
+                hostName: peer:
+                mkNixosConfiguration {
+                  pkgSets.pkgs = pkgs;
+                  configModule =
+                    { name, nodes, lib, ... }:
+                    {
+                      imports = [ minimalNixosBase ];
+                      networking.hostName = name;
+                      deployment.targetHost = nodes.${peer}.config.networking.hostName;
+                      deployment.tags = [ peer ];
+                    };
+                }
+              ) {
+                meta = "defaults";
+                defaults = "network";
+                network = "meta";
+              };
+            };
+        };
+      in
+      builtins.attrNames hive.deploymentConfig == [ "defaults" "meta" "network" ]
+      && hive.deploymentConfig.meta.targetHost == "defaults"
+      && hive.nodes.network.config.networking.hostName == "network"
+      && builtins.attrNames (hive.evalSelected [ "meta" ]) == [ "meta" ];
+
     terranixConfigurationEvaluatesEndToEnd =
       let
         terraform = composed.lib.caisson.terranix.mkConfiguration {
