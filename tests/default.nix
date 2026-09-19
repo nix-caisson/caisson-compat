@@ -71,6 +71,19 @@ let
       system.stateVersion = "25.05";
     };
 
+  # The colmena probes compose with declared ecosystems: a node's
+  # `ecosystemSrc` is colmena's, and nixpkgs resolves from the
+  # declaration, as it does in a consumer flake.
+  hiveLib = inputs.caisson.lib.caisson-core.mkLib {
+    inputs = { };
+    projects = {
+      caisson = inputs.caisson;
+    };
+    ecosystems = {
+      inherit (inputs) nixpkgs colmena;
+    };
+  };
+
   results = {
 
     composesTheCaissonLibrary =
@@ -180,14 +193,17 @@ let
         system = composed.lib.caisson.nixos.mkConfigurationMinimal {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
+          # The minimal evaluator carries no nixpkgs module, so the
+          # package set arrives as the `pkgs` module argument.
           configModule =
-            { lib, ... }:
+            { lib, pkgs, ... }:
             {
-              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+              options.probePkgs = lib.mkOption { type = lib.types.raw; };
+              config.probePkgs = pkgs;
             };
         };
       in
-      system.config.nixpkgs.pkgs ? hello;
+      system.config.probePkgs ? hello;
 
     sourceMetaProvenanceIsCompositional =
       let
@@ -203,9 +219,18 @@ let
       let
         throws = expr: !(builtins.tryEval (builtins.deepSeq expr true)).success;
       in
-      throws (composed.lib.caisson.colmena.mkConfiguration { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson.terranix.mkConfiguration { ecosystemSrc = { }; })
-      && throws (composed.lib.caisson.system-manager.mkConfiguration { ecosystemSrc = { }; });
+      throws (composed.lib.caisson.colmena.mkConfiguration {
+        ecosystemSrc = { };
+        configModule = { };
+      })
+      && throws (composed.lib.caisson.terranix.mkConfiguration {
+        ecosystemSrc = { };
+        configModule = { };
+      })
+      && throws (composed.lib.caisson.system-manager.mkConfiguration {
+        ecosystemSrc = { };
+        configModule = { };
+      });
 
     homeConfigurationEvaluatesEndToEnd =
       let
@@ -296,19 +321,6 @@ let
       && system.config.systemd.user.services.home-manager.unitConfig.ConditionUser == "probe"
       && builtins.isString system.config.system.build.toplevel.drvPath;
 
-    # The colmena probes compose with declared ecosystems: a node's
-    # `ecosystemSrc` is colmena's, and nixpkgs resolves from the
-    # declaration, as it does in a consumer flake.
-    hiveLib = inputs.caisson.lib.caisson-core.mkLib {
-      inputs = { };
-      projects = {
-        caisson = inputs.caisson;
-      };
-      ecosystems = {
-        inherit (inputs) nixpkgs colmena;
-      };
-    };
-
     colmenaHiveEvaluatesEndToEnd =
       let
         hive = hiveLib.caisson.colmena.mkConfiguration {
@@ -369,6 +381,7 @@ let
 
     # A hive refuses a node that is not a colmena node, and the node
     # constructor refuses `deployment` as an argument.
+    # A node is checked when it is read, so the probe forces one.
     colmenaRefusesPlainNixosNodes =
       let
         refused = f: !(builtins.tryEval f).success;
@@ -379,7 +392,7 @@ let
             pkgSets.pkgs = pkgs;
             configModule = minimalNixosBase;
           };
-        }).toplevel
+        }).nodes.plain
       && refused
         (hiveLib.caisson.colmena.mkConfiguration {
           configModule =
@@ -391,11 +404,12 @@ let
                 deployment.targetHost = "x";
               };
             };
-        }).toplevel;
+        }).nodes.bad;
 
     # Node names colmena's flat hive reserved (meta, defaults, network)
-    # are ordinary names here, and every node sees `name` and `nodes`
-    # as colmena's own evaluator provided them.
+    # are ordinary names here. A node is an evaluated NixOS
+    # configuration, so its module takes its host name from its own
+    # definitions rather than from a `name` argument.
     colmenaNodesAreNamedFreely =
       let
         hive = hiveLib.caisson.colmena.mkConfiguration {
@@ -407,11 +421,11 @@ let
                 mkNixosConfiguration {
                   pkgSets.pkgs = pkgs;
                   configModule =
-                    { name, nodes, lib, ... }:
+                    { ... }:
                     {
                       imports = [ minimalNixosBase ];
-                      networking.hostName = name;
-                      deployment.targetHost = nodes.${peer}.config.networking.hostName;
+                      networking.hostName = hostName;
+                      deployment.targetHost = peer;
                       deployment.tags = [ peer ];
                     };
                 }
@@ -444,7 +458,7 @@ let
                     configModule = minimalNixosBase;
                   };
                 };
-            }).toplevel
+            }).nodes.${nodeName}
           ).success;
       in
       refused "a,b" && refused "@tagged" && refused "";
@@ -657,13 +671,14 @@ let
         system = composedWithDeclaration.caisson.nixos.mkConfigurationMinimal {
           pkgSets.pkgs = pkgs;
           configModule =
-            { lib, ... }:
+            { lib, pkgs, ... }:
             {
-              options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
+              options.probePkgs = lib.mkOption { type = lib.types.raw; };
+              config.probePkgs = pkgs;
             };
         };
       in
-      system.config.nixpkgs.pkgs ? hello;
+      system.config.probePkgs ? hello;
 
     nixpkgsHelpersWorkOnRealPkgs =
       let
