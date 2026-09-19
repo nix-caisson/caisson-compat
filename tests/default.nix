@@ -49,12 +49,15 @@ let
   expectedCoreNames = [
     "callConsumerFlake"
     "compose"
+    "evalManifest"
     "importApply"
+    "libManifest"
     "mkLib"
     "mkLibOverlay"
     "mkModule"
     "modules"
     "partitionExtraInputs"
+    "pkgsManifest"
     "resolve"
   ];
 
@@ -624,7 +627,7 @@ let
             flake-parts = inputs.caisson.libOverlays.flake-parts;
           };
         };
-        manifest = composedWithMkLib.caisson-core.manifest;
+        manifest = composedWithMkLib.caisson-core.libManifest;
       in
       builtins.attrNames manifest == [
         "ecosystems"
@@ -632,9 +635,44 @@ let
         "libOverlays"
         "modules"
         "projects"
+        "systems"
       ]
+      && manifest.systems == null
+      && composedWithMkLib.caisson-core.pkgsManifest == null
+      && composedWithMkLib.caisson-core.evalManifest == null
       && builtins.attrNames manifest.libOverlays == [ "flake-parts" ]
       && composedWithMkLib.caisson.flake-parts ? mkConfiguration;
+
+    # A tree declares its platforms once, on mkLib; the flake-parts
+    # integration reads them from the manifest, so a flake module that
+    # names no `systems` still enumerates them.
+    systemsDeclaredOnMkLibReachFlakeParts =
+      let
+        composedWithSystems = inputs.caisson.lib.caisson-core.mkLib {
+          inputs = { };
+          systems = [
+            "x86_64-linux"
+            "aarch64-linux"
+          ];
+          libOverlays = _mkLibOverlay: {
+            flake-parts = inputs.caisson.libOverlays.flake-parts;
+          };
+        };
+        outputs = composedWithSystems.caisson.flake-parts.mkConfiguration {
+          configModule = {
+            perSystem =
+              { system, ... }:
+              {
+                legacyPackages.probeSystem = system;
+              };
+          };
+        };
+      in
+      builtins.attrNames outputs.legacyPackages == [
+        "aarch64-linux"
+        "x86_64-linux"
+      ]
+      && outputs.legacyPackages.x86_64-linux.probeSystem == "x86_64-linux";
 
     projectConsumptionComposesCaissonWhole =
       let
