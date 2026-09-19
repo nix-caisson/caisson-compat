@@ -55,6 +55,7 @@ let
     "mkLib"
     "mkLibOverlay"
     "mkModule"
+    "mkNixpkgsLibEntry"
     "modules"
     "partitionExtraInputs"
     "pkgsManifest"
@@ -82,7 +83,7 @@ let
     projects = {
       caisson = inputs.caisson;
     };
-    ecosystems = {
+    defaultEcosystemSrc = {
       inherit (inputs) nixpkgs colmena;
     };
   };
@@ -94,7 +95,7 @@ let
       && builtins.attrNames composed.lib.caisson-core == expectedCoreNames
       &&
         composed.meta.order == [
-          "caisson.nixpkgs-lib"
+          "nixpkgs-lib"
           "caisson.lib"
           "caisson.flake-parts"
           "caisson.tooling"
@@ -141,7 +142,7 @@ let
     baseReplacementLastWins =
       let
         stub = {
-          key = "caisson.nixpkgs-lib";
+          key = "nixpkgs-lib";
           imports = [ ];
           overlay = _final: _prev: { stubMarker = true; };
         };
@@ -156,7 +157,7 @@ let
       && !(r.lib ? evalModules)
       &&
         r.meta.order == [
-          "caisson.nixpkgs-lib"
+          "nixpkgs-lib"
           "caisson.lib"
         ];
 
@@ -579,6 +580,7 @@ let
       let
         contributingLib = inputs.caisson.lib.caisson-core.mkLib {
           inputs = { };
+          defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
           libOverlays = _mkLibOverlay: {
             nixos = inputs.caisson.libOverlays.nixos;
             contrib = inputs.caisson.lib.caisson-core.mkLibOverlay (
@@ -623,6 +625,7 @@ let
       let
         composedWithMkLib = inputs.caisson.lib.caisson-core.mkLib {
           inputs = { };
+          defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
           libOverlays = _mkLibOverlay: {
             flake-parts = inputs.caisson.libOverlays.flake-parts;
           };
@@ -630,7 +633,7 @@ let
         manifest = composedWithMkLib.caisson-core.libManifest;
       in
       builtins.attrNames manifest == [
-        "ecosystems"
+        "defaultEcosystemSrc"
         "inputs"
         "libOverlays"
         "modules"
@@ -640,7 +643,11 @@ let
       && manifest.systems == null
       && composedWithMkLib.caisson-core.pkgsManifest == null
       && composedWithMkLib.caisson-core.evalManifest == null
-      && builtins.attrNames manifest.libOverlays == [ "flake-parts" ]
+      && builtins.attrNames manifest.libOverlays == [
+        "caisson-core"
+        "flake-parts"
+        "nixpkgs-lib"
+      ]
       && composedWithMkLib.caisson.flake-parts ? mkConfiguration;
 
     # A tree declares its platforms once, on mkLib; the flake-parts
@@ -650,6 +657,7 @@ let
       let
         composedWithSystems = inputs.caisson.lib.caisson-core.mkLib {
           inputs = { };
+          defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
           systems = [
             "x86_64-linux"
             "aarch64-linux"
@@ -678,6 +686,7 @@ let
       let
         composedFromProject = inputs.caisson.lib.caisson-core.mkLib {
           inputs = { };
+          defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
           projects = {
             caisson = inputs.caisson;
           };
@@ -701,7 +710,7 @@ let
       let
         composedWithDeclaration = inputs.caisson.lib.caisson-core.mkLib {
           inputs = { };
-          ecosystems.nixpkgs = inputs.nixpkgs;
+          defaultEcosystemSrc.nixpkgs = inputs.nixpkgs;
           libOverlays = _mkLibOverlay: {
             nixos = inputs.caisson.libOverlays.nixos;
           };
