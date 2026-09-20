@@ -33,7 +33,7 @@ evaluation-shape change that caisson must absorb.
 ./run-tests.sh
 ```
 
-The suite composes caisson's seven integrations and its tooling
+The suite composes caisson's integrations and its tooling
 through caisson-core's `compose` against the pinned
 world, and exercises the composition guarantees (dedup, replacement,
 polyfills, the keyless tail) over the real entries plus integration
