@@ -48,6 +48,7 @@ let
 
   expectedCoreNames = [
     "callConsumerFlake"
+    "callFlake"
     "compose"
     "evalManifest"
     "importApply"
@@ -658,6 +659,7 @@ let
         composedWithSystems = inputs.caisson.lib.caisson-core.mkLib {
           inputs = { };
           defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
+          defaultEcosystemSrc.flake-parts = inputs.flake-parts;
           systems = [
             "x86_64-linux"
             "aarch64-linux"

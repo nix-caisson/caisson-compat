@@ -5,14 +5,15 @@
 
   inputs = {
 
-    # caisson's own core pin is hidden (not an input), so there is
-    # nothing to follow; the suite composes with this caisson-core
-    # directly where it cares.
+    # The suite composes with this caisson-core directly where it
+    # cares which core composes a library.
     caisson-core.url = "github:nix-caisson/caisson-core";
     caisson.url = "github:nix-caisson/caisson";
 
     nixpkgs-lib.url = "github:nix-community/nixpkgs.lib";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs-lib";
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";

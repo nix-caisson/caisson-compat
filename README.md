@@ -8,15 +8,15 @@ ordinary flake inputs,
 overridable with standard `follows`, and advancing them routinely is
 this repository's job, so its commit history is expected to churn.
 
-Two audiences use it:
-
-- **Consumers outside the caisson ecosystem** depend on caisson-compat
-  when they want the caisson family with current, standard-overridable
-  upstream pins.
-- **The stable repositories test through it.** caisson and
-  caisson-core carry no churning pins of their own; their CI fetches
-  this repository and runs the suite with the local working tree
-  overriding the corresponding input:
+It is a churn shield. caisson declares only the three small trees its
+own evaluation composes with (caisson-core, nixpkgs' lib, flake-parts)
+and caisson-core declares nothing; the ecosystems the integrations
+wrap (nixpkgs, home-manager, colmena, terranix, system-manager) are
+pinned here and nowhere else in the family, so their routine advances
+land in this repository's history and the stable repositories' histories
+stay about the code. The stable repositories test through it: their CI
+fetches this repository and runs the suite with the local working tree
+overriding the corresponding input:
 
   ```sh
   nix eval .#lib.caisson-compat.tests.summary \
@@ -33,7 +33,7 @@ evaluation-shape change that caisson must absorb.
 ./run-tests.sh
 ```
 
-The suite composes caisson's seven integrations and its tooling
+The suite composes caisson's integrations and its tooling
 through caisson-core's `compose` against the pinned
 world, and exercises the composition guarantees (dedup, replacement,
 polyfills, the keyless tail) over the real entries plus integration
@@ -41,8 +41,9 @@ behavior: both framework namespaces' shapes, a minimal NixOS system
 evaluated through `caisson.nixos` against the pinned nixpkgs,
 `caisson.home-manager` source-metadata provenance, the integrations'
 ecosystemSrc validation, layered ecosystem-source resolution from a
-declared `ecosystems.nixpkgs`, overlay-borne module contribution, and
-the manifest an mkLib composition carries.
+declared `defaultEcosystemSrc.nixpkgs`, a flake-parts evaluation over
+the flake-parts this repository declares, overlay-borne module
+contribution, and the manifest an mkLib composition carries.
 
 ## CI
 
