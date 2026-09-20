@@ -29,6 +29,7 @@ let
       entries.colmena
       entries.terranix
       entries.system-manager
+      entries.structural
     ];
   };
 
@@ -42,6 +43,7 @@ let
     "mkMemoizedDerivationRead"
     "nixos"
     "nixpkgs"
+    "structural"
     "system-manager"
     "terranix"
   ];
@@ -106,6 +108,7 @@ let
           "caisson.colmena"
           "caisson.terranix"
           "caisson.system-manager"
+          "caisson.structural"
         ];
 
     baseLibraryBehaves =
@@ -748,6 +751,36 @@ let
       scoped.probe.pname == "hello"
       && withPackages.compatScope.probe.pname == "hello"
       && withPolyfill.compatPolyfillProbe.pname == "hello";
+
+    # The structural integration: a top over the empty class returns
+    # the selected registries with the manifest beside them, and the
+    # same selectors under flake-parts export the same registries.
+    structuralTopMatchesFlakeParts =
+      let
+        composedWithBoth = inputs.caisson.lib.caisson-core.mkLib {
+          inputs = { };
+          defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
+          defaultEcosystemSrc.flake-parts = inputs.flake-parts;
+          systems = [ "x86_64-linux" ];
+          libOverlays = _mkLibOverlay: {
+            structural = inputs.caisson.libOverlays.structural;
+            flake-parts = inputs.caisson.libOverlays.flake-parts;
+          };
+        };
+        selectors = {
+          caisson.libOverlays.exported = overlays: { inherit (overlays) structural; };
+        };
+        top = composedWithBoth.caisson.structural.mkTopConfiguration {
+          configModule = selectors;
+        };
+        flake = composedWithBoth.caisson.flake-parts.mkConfiguration {
+          configModule = selectors;
+        };
+      in
+      builtins.attrNames top.libOverlays == [ "structural" ]
+      && builtins.attrNames flake.libOverlays == [ "structural" ]
+      && top.caisson.manifest ? modules
+      && top.lib == { };
 
   };
 
