@@ -1,12 +1,17 @@
 {
   "nodes": {
     "caisson": {
+      "inputs": {
+        "caisson-core": "caisson-core",
+        "flake-parts": "flake-parts",
+        "nixpkgs-lib": "nixpkgs-lib"
+      },
       "locked": {
-        "lastModified": 1789852095,
-        "narHash": "sha256-tcbX7IdrjB8osheKFBtS793JEAig7ZTr2LxH9ducfmI=",
+        "lastModified": 1789872556,
+        "narHash": "sha256-2QM22/sFf+SZOBkUl/SKc9SUGG3Cw5ABjfuZHkW10qY=",
         "owner": "nix-caisson",
         "repo": "caisson",
-        "rev": "68cb9c4e6e6285c4ebdacf06bb963b6d59bf2a12",
+        "rev": "aedfbf9b821ae3cae1a4a90b671724713043de8d",
         "type": "github"
       },
       "original": {
@@ -17,11 +22,26 @@
     },
     "caisson-core": {
       "locked": {
-        "lastModified": 1789852009,
-        "narHash": "sha256-B1pKehrqBNSWPHqVRSemVclG1XCeKmI9l+3140PVRIQ=",
+        "lastModified": 1789871824,
+        "narHash": "sha256-/zGvZZJG8TuM0d2WOdJ5fNDM7gjjTqjesB+4AaYDNPk=",
         "owner": "nix-caisson",
         "repo": "caisson-core",
-        "rev": "9a93745f7fd2c6ff8f95cf94661d62313ff19197",
+        "rev": "e4fd315b5603bec03956f6b435e14e2ae9993c4a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-caisson",
+        "repo": "caisson-core",
+        "type": "github"
+      }
+    },
+    "caisson-core_2": {
+      "locked": {
+        "lastModified": 1789871824,
+        "narHash": "sha256-/zGvZZJG8TuM0d2WOdJ5fNDM7gjjTqjesB+4AaYDNPk=",
+        "owner": "nix-caisson",
+        "repo": "caisson-core",
+        "rev": "e4fd315b5603bec03956f6b435e14e2ae9993c4a",
         "type": "github"
       },
       "original": {
@@ -89,6 +109,47 @@
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
+          "caisson",
+          "nixpkgs-lib"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788450739,
+        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_2": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "nixpkgs-lib"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788450739,
+        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_3": {
+      "inputs": {
+        "nixpkgs-lib": [
           "system-manager",
           "userborn",
           "nixpkgs"
@@ -108,7 +169,7 @@
         "type": "github"
       }
     },
-    "flake-parts_2": {
+    "flake-parts_4": {
       "inputs": {
         "nixpkgs-lib": [
           "terranix",
@@ -257,6 +318,21 @@
         "type": "github"
       }
     },
+    "nixpkgs-lib_2": {
+      "locked": {
+        "lastModified": 1789266065,
+        "narHash": "sha256-XtTdVeJX6X/gU+vGIUEJHirotv/lYP5+Q9irMH6HWPY=",
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "rev": "b91d4f1bc958e0bdfd6cb3db4a280486006f5002",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "type": "github"
+      }
+    },
     "pre-commit-hooks-nix": {
       "inputs": {
         "flake-compat": [
@@ -288,11 +364,12 @@
     "root": {
       "inputs": {
         "caisson": "caisson",
-        "caisson-core": "caisson-core",
+        "caisson-core": "caisson-core_2",
         "colmena": "colmena",
+        "flake-parts": "flake-parts_2",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-lib": "nixpkgs-lib",
+        "nixpkgs-lib": "nixpkgs-lib_2",
         "system-manager": "system-manager",
         "terranix": "terranix"
       }
@@ -382,7 +459,7 @@
     },
     "terranix": {
       "inputs": {
-        "flake-parts": "flake-parts_2",
+        "flake-parts": "flake-parts_4",
         "import-tree": "import-tree",
         "nixpkgs": [
           "nixpkgs"
@@ -409,7 +486,7 @@
           "system-manager",
           "flake-compat"
         ],
-        "flake-parts": "flake-parts",
+        "flake-parts": "flake-parts_3",
         "nixpkgs": [
           "system-manager",
           "nixpkgs"
