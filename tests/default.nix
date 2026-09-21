@@ -184,6 +184,7 @@ let
         r.meta.order == [
           "caisson-core"
           "nixpkgs-lib"
+          "integrations"
           "flake-parts"
         ];
 
