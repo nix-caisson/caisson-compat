@@ -7,11 +7,11 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1789972756,
+        "lastModified": 1789972878,
         "narHash": "sha256-6CBP2i32Pi/+p7WcS+K7h08FiqhlvjBRI/bxhn5vvpg=",
         "owner": "nix-caisson",
         "repo": "caisson",
-        "rev": "9d976cf7c5896e1d403721fd4af2e6e598241b35",
+        "rev": "01e9058a60ecb440b6d2abfa2a4c5b030daabf77",
         "type": "github"
       },
       "original": {
