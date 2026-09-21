@@ -63,6 +63,7 @@ let
   expectedCoreNames = [
     "callConsumerFlake"
     "callFlake"
+    "classes"
     "compose"
     "configs"
     "evalManifest"
