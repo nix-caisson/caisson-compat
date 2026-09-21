@@ -62,6 +62,7 @@ let
     "callConsumerFlake"
     "callFlake"
     "compose"
+    "configs"
     "evalManifest"
     "importApply"
     "libManifest"
@@ -649,6 +650,7 @@ let
         manifest = composedWithMkLib.caisson-core.libManifest;
       in
       builtins.attrNames manifest == [
+        "configs"
         "defaultEcosystemSrc"
         "inputs"
         "libOverlays"
