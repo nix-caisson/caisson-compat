@@ -28,9 +28,17 @@ let
       libOverlays = _mkLibOverlay: inputs.caisson.libOverlays;
     }).caisson-core.libManifest.libOverlays;
 
+  # The registry names of caisson-core's own entries.
+  coreNames = [
+    "caisson-core/compose"
+    "caisson-core/kernel"
+    "caisson-core/lifecycle"
+    "caisson-core/readers"
+    "caisson-core/resolve"
+  ];
+
   composed = compose {
-    entries = [
-      registered.caisson-core
+    entries = builtins.map (name: registered.${name}) coreNames ++ [
       registered.integrations
       registered.flake-parts
       registered.tooling
@@ -68,9 +76,13 @@ let
     "classes"
     "compose"
     "configs"
+    "contributeClasses"
+    "contributeModules"
+    "coreEntries"
     "evalManifest"
     "importApply"
     "libManifest"
+    "mkExtendedLib"
     "mkLib"
     "mkLibOverlay"
     "mkLibOverlays"
@@ -115,8 +127,7 @@ let
       builtins.attrNames composed.lib.caisson == expectedCaissonNames
       && builtins.attrNames composed.lib.caisson-core == expectedCoreNames
       &&
-        composed.meta.order == [
-          "caisson-core"
+        composed.meta.order == coreNames ++ [
           "integrations"
           "nixpkgs-lib"
           "flake-parts"
@@ -151,10 +162,7 @@ let
           };
         };
         r = compose {
-          entries = [
-            registered.caisson-core
-            polyfill
-          ];
+          entries = builtins.map (name: registered.${name}) coreNames ++ [ polyfill ];
         };
       in
       r.lib.compatProbe [
@@ -171,8 +179,7 @@ let
           overlay = _final: _prev: { stubMarker = true; };
         };
         r = compose {
-          entries = [
-            registered.caisson-core
+          entries = builtins.map (name: registered.${name}) coreNames ++ [
             registered.flake-parts
             stub
           ];
@@ -181,8 +188,7 @@ let
       r.lib.stubMarker or false
       && !(r.lib ? evalModules)
       &&
-        r.meta.order == [
-          "caisson-core"
+        r.meta.order == coreNames ++ [
           "nixpkgs-lib"
           "integrations"
           "flake-parts"
@@ -196,10 +202,7 @@ let
           overlay = _final: prev: { sawCaisson = prev.caisson-core ? mkLib; };
         };
         r = compose {
-          entries = [
-            anon
-            registered.caisson-core
-          ];
+          entries = [ anon ] ++ builtins.map (name: registered.${name}) coreNames;
         };
       in
       r.lib.sawCaisson;
@@ -312,7 +315,7 @@ let
             };
         };
         # fromJSON refuses context-carrying strings; the marker file
-        # embeds store paths as ordinary references, which is correct.
+        # embeds store paths as ordinary references.
         marker = builtins.fromJSON (
           builtins.unsafeDiscardStringContext
             system.config.environment.etc."caisson-home-manager/source.json".text
@@ -676,8 +679,7 @@ let
       && manifest.systems == null
       && composedWithMkLib.caisson-core.pkgsManifest == null
       && composedWithMkLib.caisson-core.evalManifest == null
-      && builtins.attrNames manifest.libOverlays == [
-        "caisson-core"
+      && builtins.attrNames manifest.libOverlays == coreNames ++ [
         "flake-parts"
         "nixpkgs-lib"
       ]
