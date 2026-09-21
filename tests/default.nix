@@ -15,24 +15,35 @@ let
   core = inputs.caisson-core.lib.caisson-core;
   inherit (core) compose resolve;
 
-  entries = inputs.caisson.lib.composition.entriesFor {
-    ecosystemSrc = "${inputs.nixpkgs-lib}/lib";
-  };
+  # caisson's integrations as the keyed entries a registry holds: the
+  # overlays caisson exports, registered by mkLib and read back from
+  # the manifest, each keyed by its registry name and importing the
+  # published nixpkgs-lib entry. The suite composes them with
+  # caisson-core's `compose` directly, the way mkLib does, so the
+  # composition guarantees are probed on the real entries.
+  registered =
+    (inputs.caisson.lib.caisson-core.mkLib {
+      inputs = { };
+      defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
+      libOverlays = _mkLibOverlay: inputs.caisson.libOverlays;
+    }).caisson-core.libManifest.libOverlays;
 
   composed = compose {
     entries = [
-      entries.flake-parts
-      entries.tooling
-      entries.nixpkgs
-      entries.nixos
-      entries.home-manager
-      entries.colmena
-      entries.terranix
-      entries.system-manager
+      registered.caisson-core
+      registered.flake-parts
+      registered.tooling
+      registered.nixpkgs
+      registered.nixos
+      registered.home-manager
+      registered.colmena
+      registered.terranix
+      registered.system-manager
+      registered.structural
     ];
   };
 
-  # The seven integrations plus the pkgs-dependent tooling live under
+  # The integrations plus the pkgs-dependent tooling live under
   # `caisson`; the machinery lives under `caisson-core`.
   expectedCaissonNames = [
     "colmena"
@@ -42,6 +53,7 @@ let
     "mkMemoizedDerivationRead"
     "nixos"
     "nixpkgs"
+    "structural"
     "system-manager"
     "terranix"
   ];
@@ -50,6 +62,7 @@ let
     "callConsumerFlake"
     "callFlake"
     "compose"
+    "configs"
     "evalManifest"
     "importApply"
     "libManifest"
@@ -96,16 +109,17 @@ let
       && builtins.attrNames composed.lib.caisson-core == expectedCoreNames
       &&
         composed.meta.order == [
+          "caisson-core"
           "nixpkgs-lib"
-          "caisson.lib"
-          "caisson.flake-parts"
-          "caisson.tooling"
-          "caisson.nixpkgs"
-          "caisson.nixos"
-          "caisson.home-manager"
-          "caisson.colmena"
-          "caisson.terranix"
-          "caisson.system-manager"
+          "flake-parts"
+          "tooling"
+          "nixpkgs"
+          "nixos"
+          "home-manager"
+          "colmena"
+          "terranix"
+          "system-manager"
+          "structural"
         ];
 
     baseLibraryBehaves =
@@ -122,14 +136,14 @@ let
       let
         polyfill = {
           key = "compat.polyfill";
-          imports = [ entries.base ];
+          imports = [ registered.nixpkgs-lib ];
           overlay = _final: prev: {
             compatProbe = prev.compatProbe or (x: "probe-${prev.concatStringsSep "-" x}");
           };
         };
         r = compose {
           entries = [
-            entries.caisson-lib
+            registered.caisson-core
             polyfill
           ];
         };
@@ -149,7 +163,8 @@ let
         };
         r = compose {
           entries = [
-            entries.caisson-lib
+            registered.caisson-core
+            registered.flake-parts
             stub
           ];
         };
@@ -158,8 +173,9 @@ let
       && !(r.lib ? evalModules)
       &&
         r.meta.order == [
+          "caisson-core"
           "nixpkgs-lib"
-          "caisson.lib"
+          "flake-parts"
         ];
 
     keylessPatchSeesComposedWorld =
@@ -172,7 +188,7 @@ let
         r = compose {
           entries = [
             anon
-            entries.caisson-lib
+            registered.caisson-core
           ];
         };
       in
@@ -634,6 +650,7 @@ let
         manifest = composedWithMkLib.caisson-core.libManifest;
       in
       builtins.attrNames manifest == [
+        "configs"
         "defaultEcosystemSrc"
         "inputs"
         "libOverlays"
@@ -748,6 +765,36 @@ let
       scoped.probe.pname == "hello"
       && withPackages.compatScope.probe.pname == "hello"
       && withPolyfill.compatPolyfillProbe.pname == "hello";
+
+    # The structural integration: a top over the empty class returns
+    # the selected registries with the manifest beside them, and the
+    # same selectors under flake-parts export the same registries.
+    structuralTopMatchesFlakeParts =
+      let
+        composedWithBoth = inputs.caisson.lib.caisson-core.mkLib {
+          inputs = { };
+          defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
+          defaultEcosystemSrc.flake-parts = inputs.flake-parts;
+          systems = [ "x86_64-linux" ];
+          libOverlays = _mkLibOverlay: {
+            structural = inputs.caisson.libOverlays.structural;
+            flake-parts = inputs.caisson.libOverlays.flake-parts;
+          };
+        };
+        selectors = {
+          caisson.libOverlays.exported = overlays: { inherit (overlays) structural; };
+        };
+        top = composedWithBoth.caisson.structural.mkTopConfiguration {
+          configModule = selectors;
+        };
+        flake = composedWithBoth.caisson.flake-parts.mkConfiguration {
+          configModule = selectors;
+        };
+      in
+      builtins.attrNames top.libOverlays == [ "structural" ]
+      && builtins.attrNames flake.libOverlays == [ "structural" ]
+      && top.caisson.manifest ? modules
+      && top.lib == { };
 
   };
 
