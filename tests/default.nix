@@ -315,7 +315,7 @@ let
             };
         };
         # fromJSON refuses context-carrying strings; the marker file
-        # embeds store paths as ordinary references, which is correct.
+        # embeds store paths as ordinary references.
         marker = builtins.fromJSON (
           builtins.unsafeDiscardStringContext
             system.config.environment.etc."caisson-home-manager/source.json".text
