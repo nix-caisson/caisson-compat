@@ -31,6 +31,7 @@ let
   composed = compose {
     entries = [
       registered.caisson-core
+      registered.integrations
       registered.flake-parts
       registered.tooling
       registered.nixpkgs
@@ -51,6 +52,7 @@ let
     "eval-weight"
     "flake-parts"
     "home-manager"
+    "integrations"
     "mkMemoizedDerivationRead"
     "nixos"
     "nixos-minimal"
@@ -115,6 +117,7 @@ let
       &&
         composed.meta.order == [
           "caisson-core"
+          "integrations"
           "nixpkgs-lib"
           "flake-parts"
           "tooling"
