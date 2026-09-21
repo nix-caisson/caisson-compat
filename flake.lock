@@ -7,11 +7,11 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1789958627,
-        "narHash": "sha256-yiDRR/brno12xtYDorbrNoKnYdqbteEbKCBTmMljh+c=",
+        "lastModified": 1789970520,
+        "narHash": "sha256-va6f1kyAgLCfzjFOtDmAJdaJ47PXrdBByKEe86UUGpk=",
         "owner": "nix-caisson",
         "repo": "caisson",
-        "rev": "cf780117b0bc0ca395847d8b8811a258d3389722",
+        "rev": "6ea7e34a835508de30ab2515b64f896eab043187",
         "type": "github"
       },
       "original": {
@@ -22,11 +22,11 @@
     },
     "caisson-core": {
       "locked": {
-        "lastModified": 1789957989,
-        "narHash": "sha256-iGMp70NBaFwolzIj9kU8NQ42FGnWWm9B/lYYCgViKoM=",
+        "lastModified": 1789968365,
+        "narHash": "sha256-jChcLZ5nAdP+ISnTM8jmxnP2WRpZJRZqvx8aPqIan5M=",
         "owner": "nix-caisson",
         "repo": "caisson-core",
-        "rev": "8ab6587ef82725233a00a9fe493aae59efa7a609",
+        "rev": "03d280668003210ee218ed24662cd9c6d2239969",
         "type": "github"
       },
       "original": {
@@ -37,11 +37,11 @@
     },
     "caisson-core_2": {
       "locked": {
-        "lastModified": 1789957989,
-        "narHash": "sha256-iGMp70NBaFwolzIj9kU8NQ42FGnWWm9B/lYYCgViKoM=",
+        "lastModified": 1789968365,
+        "narHash": "sha256-jChcLZ5nAdP+ISnTM8jmxnP2WRpZJRZqvx8aPqIan5M=",
         "owner": "nix-caisson",
         "repo": "caisson-core",
-        "rev": "8ab6587ef82725233a00a9fe493aae59efa7a609",
+        "rev": "03d280668003210ee218ed24662cd9c6d2239969",
         "type": "github"
       },
       "original": {

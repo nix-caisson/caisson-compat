@@ -31,10 +31,12 @@ let
   composed = compose {
     entries = [
       registered.caisson-core
+      registered.integrations
       registered.flake-parts
       registered.tooling
       registered.nixpkgs
       registered.nixos
+      registered.nixos-minimal
       registered.home-manager
       registered.colmena
       registered.terranix
@@ -50,8 +52,10 @@ let
     "eval-weight"
     "flake-parts"
     "home-manager"
+    "integrations"
     "mkMemoizedDerivationRead"
     "nixos"
+    "nixos-minimal"
     "nixpkgs"
     "structural"
     "system-manager"
@@ -61,6 +65,7 @@ let
   expectedCoreNames = [
     "callConsumerFlake"
     "callFlake"
+    "classes"
     "compose"
     "configs"
     "evalManifest"
@@ -68,7 +73,9 @@ let
     "libManifest"
     "mkLib"
     "mkLibOverlay"
+    "mkLibOverlays"
     "mkModule"
+    "mkModules"
     "mkNixpkgsLibEntry"
     "modules"
     "partitionExtraInputs"
@@ -110,11 +117,13 @@ let
       &&
         composed.meta.order == [
           "caisson-core"
+          "integrations"
           "nixpkgs-lib"
           "flake-parts"
           "tooling"
           "nixpkgs"
           "nixos"
+          "nixos-minimal"
           "home-manager"
           "colmena"
           "terranix"
@@ -175,6 +184,7 @@ let
         r.meta.order == [
           "caisson-core"
           "nixpkgs-lib"
+          "integrations"
           "flake-parts"
         ];
 
@@ -203,6 +213,7 @@ let
     integrationNamespacesPresent = builtins.all (ns: composed.lib.caisson ? ${ns}) [
       "nixpkgs"
       "nixos"
+      "nixos-minimal"
       "home-manager"
       "colmena"
       "terranix"
@@ -211,7 +222,7 @@ let
 
     minimalNixosSystemEvaluates =
       let
-        system = composed.lib.caisson.nixos.mkConfigurationMinimal {
+        system = composed.lib.caisson.nixos-minimal.mkConfiguration {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = import inputs.nixpkgs { system = "x86_64-linux"; };
           # The minimal evaluator carries no nixpkgs module, so the
@@ -520,7 +531,7 @@ let
         configModule = { };
         pkgs = pkgs;
       })
-      && refused (composed.lib.caisson.nixos.mkConfigurationMinimal {
+      && refused (composed.lib.caisson.nixos-minimal.mkConfiguration {
         ecosystemSrc = inputs.nixpkgs;
         pkgSets.pkgs = pkgs;
         configModule = { };
@@ -557,7 +568,7 @@ let
 
     ecosystemArgsTwinsReachTheEvaluator =
       let
-        minimal = composed.lib.caisson.nixos.mkConfigurationMinimalWithEcosystemArgs {
+        minimal = composed.lib.caisson.nixos-minimal.mkConfigurationWithEcosystemArgs {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -600,6 +611,7 @@ let
           defaultEcosystemSrc.nixpkgs-lib = inputs.nixpkgs-lib;
           libOverlays = _mkLibOverlay: {
             nixos = inputs.caisson.libOverlays.nixos;
+            nixos-minimal = inputs.caisson.libOverlays.nixos-minimal;
             contrib = inputs.caisson.lib.caisson-core.mkLibOverlay (
               {
                 mkModule,
@@ -626,7 +638,7 @@ let
             );
           };
         };
-        system = contributingLib.caisson.nixos.mkConfigurationMinimal {
+        system = contributingLib.caisson.nixos-minimal.mkConfiguration {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -634,6 +646,9 @@ let
             {
               options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
             };
+          # Selected by name: the default default is the entries named
+          # `default`, and this one is not.
+          moduleImports = modules: [ modules.compat-probe ];
         };
       in
       system.config.compatProbe;
@@ -710,7 +725,7 @@ let
             caisson = inputs.caisson;
           };
         };
-        system = composedFromProject.caisson.nixos.mkConfigurationMinimal {
+        system = composedFromProject.caisson.nixos-minimal.mkConfiguration {
           ecosystemSrc = inputs.nixpkgs;
           pkgSets.pkgs = pkgs;
           configModule =
@@ -732,9 +747,10 @@ let
           defaultEcosystemSrc.nixpkgs = inputs.nixpkgs;
           libOverlays = _mkLibOverlay: {
             nixos = inputs.caisson.libOverlays.nixos;
+            nixos-minimal = inputs.caisson.libOverlays.nixos-minimal;
           };
         };
-        system = composedWithDeclaration.caisson.nixos.mkConfigurationMinimal {
+        system = composedWithDeclaration.caisson.nixos-minimal.mkConfiguration {
           pkgSets.pkgs = pkgs;
           configModule =
             { lib, pkgs, ... }:
