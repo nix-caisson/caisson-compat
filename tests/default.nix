@@ -68,7 +68,9 @@ let
     "libManifest"
     "mkLib"
     "mkLibOverlay"
+    "mkLibOverlays"
     "mkModule"
+    "mkModules"
     "mkNixpkgsLibEntry"
     "modules"
     "partitionExtraInputs"
@@ -634,6 +636,9 @@ let
             {
               options.nixpkgs.pkgs = lib.mkOption { type = lib.types.raw; };
             };
+          # Selected by name: the default default is the entries named
+          # `default`, and this one is not.
+          moduleImports = modules: [ modules.compat-probe ];
         };
       in
       system.config.compatProbe;
