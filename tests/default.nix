@@ -673,9 +673,11 @@ let
         "inputs"
         "libOverlays"
         "modules"
+        "namespace"
         "projects"
         "systems"
       ]
+      && manifest.namespace == null
       && manifest.systems == null
       && composedWithMkLib.caisson-core.pkgsManifest == null
       && composedWithMkLib.caisson-core.evalManifest == null
