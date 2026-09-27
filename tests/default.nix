@@ -415,11 +415,23 @@ let
       && node.pkgs.hello.drvPath == pkgs.hello.drvPath;
 
     # A hive refuses a node that is not a colmena node, and the node
-    # constructor refuses `deployment` as an argument.
-    # A node is checked when it is read, so the probe forces one.
+    # constructor takes no `deployment` argument.
+    # A node is checked when it is read, so the probe forces one. The
+    # constructor is a pattern function, and a wrong argument is Nix's
+    # function-argument error, which `tryEval` cannot catch, so its
+    # signature is read back with `builtins.functionArgs` through an
+    # option of the configuration that received it.
     colmenaRefusesPlainNixosNodes =
       let
         refused = f: !(builtins.tryEval f).success;
+        nodeSignature = builtins.fromJSON
+          (hiveLib.caisson.colmena.mkConfiguration {
+            configModule =
+              { mkNixosConfiguration, ... }:
+              {
+                meta.description = builtins.toJSON (builtins.functionArgs mkNixosConfiguration);
+              };
+          }).metaConfig.description;
       in
       refused
         (hiveLib.caisson.colmena.mkConfiguration {
@@ -428,18 +440,8 @@ let
             configModule = minimalNixosBase;
           };
         }).nodes.plain
-      && refused
-        (hiveLib.caisson.colmena.mkConfiguration {
-          configModule =
-            { mkNixosConfiguration, ... }:
-            {
-              nodes.bad = mkNixosConfiguration {
-                pkgSets.pkgs = pkgs;
-                configModule = { };
-                deployment.targetHost = "x";
-              };
-            };
-        }).nodes.bad;
+      && nodeSignature ? configModule
+      && !(nodeSignature ? deployment);
 
     # Node names colmena's flat hive reserved (meta, defaults, network)
     # are ordinary names here. A node is an evaluated NixOS
@@ -524,50 +526,37 @@ let
 
     # The closed entry points refuse evaluator arguments; the
     # ecosystem-args twins take them in `ecosystemArgs`, applied last.
+    # An entry point is a pattern function, so a refused argument is
+    # Nix's function-argument error, which `tryEval` cannot catch;
+    # the signature is read back with `builtins.functionArgs` instead.
     evaluatorArgumentsAreRefused =
       let
-        refused = f: !(builtins.tryEval f).success;
+        signatureOf = name: builtins.functionArgs composed.lib.caisson.${name}.mkConfiguration;
+        twinSignatureOf =
+          name: builtins.functionArgs composed.lib.caisson.${name}.mkConfigurationWithEcosystemArgs;
+        # `name` takes `configModule` and refuses `argument`.
+        refuses = name: argument: signatureOf name ? configModule && !(signatureOf name ? argument);
+        # The twin of `name` takes what the entry point takes and
+        # `ecosystemArgs`, which the entry point refuses.
+        twinOf =
+          name: refuses name "ecosystemArgs" && twinSignatureOf name == signatureOf name // { ecosystemArgs = true; };
       in
-      refused (composed.lib.caisson.nixos.mkConfiguration {
-        ecosystemSrc = inputs.nixpkgs;
-        pkgSets.pkgs = pkgs;
-        configModule = { };
-        pkgs = pkgs;
-      })
-      && refused (composed.lib.caisson.nixos-minimal.mkConfiguration {
-        ecosystemSrc = inputs.nixpkgs;
-        pkgSets.pkgs = pkgs;
-        configModule = { };
-        extraModules = [ ];
-      })
-      && refused (composed.lib.caisson.home-manager.mkConfiguration {
-        ecosystemSrc = inputs.home-manager;
-        pkgSets.pkgs = pkgs;
-        configModule = { };
-        extraSpecialArgs = { };
-      })
-      && refused (composed.lib.caisson.colmena.mkConfiguration {
-        ecosystemSrc = inputs.colmena;
-        configModule = { };
-        nodes = { };
-      })
-
-      && refused (composed.lib.caisson.terranix.mkConfiguration {
-        ecosystemSrc = inputs.terranix;
-        pkgSets.pkgs = pkgs;
-        configModule = { };
-        extraArgs = { };
-      })
-      && refused (composed.lib.caisson.system-manager.mkConfiguration {
-        ecosystemSrc = inputs.system-manager;
-        pkgSets.pkgs = pkgs;
-        configModule = { };
-        overlays = [ ];
-      })
-      && refused (composed.lib.caisson.flake-parts.mkConfiguration {
-        configModule = { };
-        moduleLocation = "x";
-      });
+      refuses "nixos" "pkgs"
+      && refuses "nixos-minimal" "extraModules"
+      && refuses "home-manager" "extraSpecialArgs"
+      && refuses "colmena" "nodes"
+      && refuses "terranix" "extraArgs"
+      && refuses "system-manager" "overlays"
+      && refuses "flake-parts" "moduleLocation"
+      && builtins.all twinOf [
+        "nixos"
+        "nixos-minimal"
+        "home-manager"
+        "colmena"
+        "terranix"
+        "system-manager"
+        "flake-parts"
+      ];
 
     ecosystemArgsTwinsReachTheEvaluator =
       let
